@@ -21,7 +21,23 @@ export interface TranscriptStats {
   projects: Record<string, { sessions: number; branches: string[]; titles: string[] }>;
 }
 
-const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+/** A pause longer than this ends a stretch of work; a resumed session starts a new stretch. */
+const IDLE_GAP_MS = 30 * 60_000;
+
+/** Longest stretch of work in minutes, given sorted timestamps. */
+export function longestActiveMinutes(sorted: number[]): number {
+  let best = 0;
+  let start = sorted[0];
+  for (let i = 1; i <= sorted.length; i++) {
+    if (i === sorted.length || sorted[i] - sorted[i - 1] > IDLE_GAP_MS) {
+      best = Math.max(best, sorted[i - 1] - start);
+      start = sorted[i];
+    }
+  }
+  return Math.round(best / 60_000);
+}
+
+const EDIT_TOOLS =new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const bump = (o: Record<string, number>, k: string, by = 1): void => { o[k] = (o[k] ?? 0) + by; };
 
@@ -37,8 +53,9 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
     projects: {},
   };
   const year = String(opts.year);
-  const days = new Map<string, { messages: number; sessions: Set<string>; toolCalls: number }>();
-  const sessionSpan = new Map<string, { first: number; last: number }>();
+  const days = new Map<string, { messages: number; toolCalls: number }>();
+  /** Timestamps of each main session's lines, for first day and active time. */
+  const sessionTimes = new Map<string, number[]>();
   const sessionCwd = new Map<string, string>();
   const sessionEntry = new Map<string, string>();
   const sessionTitles = new Map<string, Set<string>>();
@@ -48,7 +65,7 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
 
   const day = (date: string) => {
     let d = days.get(date);
-    if (!d) days.set(date, (d = { messages: 0, sessions: new Set(), toolCalls: 0 }));
+    if (!d) days.set(date, (d = { messages: 0, toolCalls: 0 }));
     return d;
   };
 
@@ -56,6 +73,9 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
     const isSubagentFile = file.split(/[\\/]/).includes('subagents');
     if (isSubagentFile) t.sessions.subagentSessions++;
     const toolNames = new Map<string, string>();
+    // Request blobs carry the effort setting but no timestamp; they count if the file has lines in the year.
+    const fileEffort: Record<string, number> = {};
+    let fileInYear = false;
 
     for await (const row of readJsonl(file)) {
       const r = row as any;
@@ -68,6 +88,11 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
         sessionTitles.get(sid)!.add(r.customTitle);
         continue;
       }
+      if (r.type === 'api-request-blob') {
+        const effort = r.message?.output_config?.effort;
+        if (typeof effort === 'string') bump(fileEffort, effort);
+        continue;
+      }
       if (typeof r.timestamp !== 'string') continue;
       const ts = Date.parse(r.timestamp);
       if (Number.isNaN(ts)) continue;
@@ -75,13 +100,13 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
       if (!date.startsWith(year)) continue;
 
       const main = !isSubagentFile && r.isSidechain !== true;
+      fileInYear = true;
       if (!t.from || date < t.from) t.from = date;
       if (!t.to || date > t.to) t.to = date;
 
       if (main && sid) {
-        const span = sessionSpan.get(sid);
-        if (!span) sessionSpan.set(sid, { first: ts, last: ts });
-        else { span.first = Math.min(span.first, ts); span.last = Math.max(span.last, ts); }
+        if (!sessionTimes.has(sid)) sessionTimes.set(sid, []);
+        sessionTimes.get(sid)!.push(ts);
         if (typeof r.cwd === 'string' && !sessionCwd.has(sid)) sessionCwd.set(sid, r.cwd);
         if (typeof r.entrypoint === 'string' && !sessionEntry.has(sid)) sessionEntry.set(sid, r.entrypoint);
         if (typeof r.cwd === 'string' && typeof r.gitBranch === 'string' && r.gitBranch) {
@@ -98,7 +123,6 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
 
       if (r.type === 'user') {
         if (typeof r.permissionMode === 'string') bump(t.permissionModes, r.permissionMode);
-        if (typeof r.effort === 'string') bump(t.effort, r.effort);
         if (typeof r.toolDenialKind === 'string') {
           if (r.toolDenialKind === 'user-rejected') t.denials.userRejected++;
           else t.denials.automatic++;
@@ -108,9 +132,7 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
       }
 
       if (main && sid && (r.type === 'user' || r.type === 'assistant')) {
-        const d = day(date);
-        d.messages++;
-        d.sessions.add(sid);
+        day(date).messages++;
       }
 
       if (r.type === 'assistant' && r.message && typeof r.message === 'object') {
@@ -154,11 +176,17 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
         }
       }
     }
+    if (fileInYear) for (const [k, n] of Object.entries(fileEffort)) bump(t.effort, k, n);
   }
 
   t.files.edited = edited.size;
-  t.sessions.count = sessionSpan.size;
-  for (const s of sessionSpan.values()) t.sessions.longestMinutes = Math.max(t.sessions.longestMinutes, Math.round((s.last - s.first) / 60000));
+  t.sessions.count = sessionTimes.size;
+  const sessionsByFirstDay: Record<string, number> = {};
+  for (const times of sessionTimes.values()) {
+    times.sort((a, b) => a - b);
+    bump(sessionsByFirstDay, localDate(times[0], opts.tz));
+    t.sessions.longestMinutes = Math.max(t.sessions.longestMinutes, longestActiveMinutes(times));
+  }
   for (const e of sessionEntry.values()) bump(t.entrypoints, e);
   for (const [sid, cwd] of sessionCwd) {
     const p = (t.projects[cwd] ??= { sessions: 0, branches: [...(branches.get(cwd) ?? [])], titles: [] });
@@ -166,7 +194,7 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
     for (const title of sessionTitles.get(sid) ?? []) if (!p.titles.includes(title)) p.titles.push(title);
   }
   t.daily = [...days].sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, d]) => ({ date, messages: d.messages, sessions: d.sessions.size, toolCalls: d.toolCalls }));
+    .map(([date, d]) => ({ date, messages: d.messages, sessions: sessionsByFirstDay[date] ?? 0, toolCalls: d.toolCalls }));
   t.dailyTokens = [...tokensByDate].sort(([a], [b]) => a.localeCompare(b)).map(([date, tokensByModel]) => ({ date, tokensByModel }));
   return t;
 }

@@ -272,6 +272,18 @@ async function readTooling(claudeDir) {
 
 // src/sources/transcripts.ts
 import path3 from "node:path";
+var IDLE_GAP_MS = 30 * 6e4;
+function longestActiveMinutes(sorted) {
+  let best = 0;
+  let start = sorted[0];
+  for (let i = 1; i <= sorted.length; i++) {
+    if (i === sorted.length || sorted[i] - sorted[i - 1] > IDLE_GAP_MS) {
+      best = Math.max(best, sorted[i - 1] - start);
+      start = sorted[i];
+    }
+  }
+  return Math.round(best / 6e4);
+}
 var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 var num2 = (v) => typeof v === "number" && Number.isFinite(v) ? v : 0;
 var bump = (o, k, by = 1) => {
@@ -295,7 +307,7 @@ async function readTranscripts(files, opts) {
   };
   const year = String(opts.year);
   const days = /* @__PURE__ */ new Map();
-  const sessionSpan = /* @__PURE__ */ new Map();
+  const sessionTimes = /* @__PURE__ */ new Map();
   const sessionCwd = /* @__PURE__ */ new Map();
   const sessionEntry = /* @__PURE__ */ new Map();
   const sessionTitles = /* @__PURE__ */ new Map();
@@ -304,13 +316,15 @@ async function readTranscripts(files, opts) {
   const tokensByDate = /* @__PURE__ */ new Map();
   const day = (date) => {
     let d = days.get(date);
-    if (!d) days.set(date, d = { messages: 0, sessions: /* @__PURE__ */ new Set(), toolCalls: 0 });
+    if (!d) days.set(date, d = { messages: 0, toolCalls: 0 });
     return d;
   };
   for (const file of files) {
     const isSubagentFile = file.split(/[\\/]/).includes("subagents");
     if (isSubagentFile) t.sessions.subagentSessions++;
     const toolNames = /* @__PURE__ */ new Map();
+    const fileEffort = {};
+    let fileInYear = false;
     for await (const row of readJsonl(file)) {
       const r = row;
       if (!r || typeof r !== "object") continue;
@@ -320,21 +334,23 @@ async function readTranscripts(files, opts) {
         sessionTitles.get(sid).add(r.customTitle);
         continue;
       }
+      if (r.type === "api-request-blob") {
+        const effort = r.message?.output_config?.effort;
+        if (typeof effort === "string") bump(fileEffort, effort);
+        continue;
+      }
       if (typeof r.timestamp !== "string") continue;
       const ts = Date.parse(r.timestamp);
       if (Number.isNaN(ts)) continue;
       const date = localDate(ts, opts.tz);
       if (!date.startsWith(year)) continue;
       const main2 = !isSubagentFile && r.isSidechain !== true;
+      fileInYear = true;
       if (!t.from || date < t.from) t.from = date;
       if (!t.to || date > t.to) t.to = date;
       if (main2 && sid) {
-        const span = sessionSpan.get(sid);
-        if (!span) sessionSpan.set(sid, { first: ts, last: ts });
-        else {
-          span.first = Math.min(span.first, ts);
-          span.last = Math.max(span.last, ts);
-        }
+        if (!sessionTimes.has(sid)) sessionTimes.set(sid, []);
+        sessionTimes.get(sid).push(ts);
         if (typeof r.cwd === "string" && !sessionCwd.has(sid)) sessionCwd.set(sid, r.cwd);
         if (typeof r.entrypoint === "string" && !sessionEntry.has(sid)) sessionEntry.set(sid, r.entrypoint);
         if (typeof r.cwd === "string" && typeof r.gitBranch === "string" && r.gitBranch) {
@@ -349,7 +365,6 @@ async function readTranscripts(files, opts) {
       if (Array.isArray(r.hookErrors)) t.sessions.hookErrors += r.hookErrors.length;
       if (r.type === "user") {
         if (typeof r.permissionMode === "string") bump(t.permissionModes, r.permissionMode);
-        if (typeof r.effort === "string") bump(t.effort, r.effort);
         if (typeof r.toolDenialKind === "string") {
           if (r.toolDenialKind === "user-rejected") t.denials.userRejected++;
           else t.denials.automatic++;
@@ -358,9 +373,7 @@ async function readTranscripts(files, opts) {
         }
       }
       if (main2 && sid && (r.type === "user" || r.type === "assistant")) {
-        const d = day(date);
-        d.messages++;
-        d.sessions.add(sid);
+        day(date).messages++;
       }
       if (r.type === "assistant" && r.message && typeof r.message === "object") {
         const u = r.message.usage ?? {};
@@ -402,17 +415,23 @@ async function readTranscripts(files, opts) {
         }
       }
     }
+    if (fileInYear) for (const [k, n] of Object.entries(fileEffort)) bump(t.effort, k, n);
   }
   t.files.edited = edited.size;
-  t.sessions.count = sessionSpan.size;
-  for (const s of sessionSpan.values()) t.sessions.longestMinutes = Math.max(t.sessions.longestMinutes, Math.round((s.last - s.first) / 6e4));
+  t.sessions.count = sessionTimes.size;
+  const sessionsByFirstDay = {};
+  for (const times of sessionTimes.values()) {
+    times.sort((a, b) => a - b);
+    bump(sessionsByFirstDay, localDate(times[0], opts.tz));
+    t.sessions.longestMinutes = Math.max(t.sessions.longestMinutes, longestActiveMinutes(times));
+  }
   for (const e of sessionEntry.values()) bump(t.entrypoints, e);
   for (const [sid, cwd] of sessionCwd) {
     const p = t.projects[cwd] ??= { sessions: 0, branches: [...branches.get(cwd) ?? []], titles: [] };
     p.sessions++;
     for (const title of sessionTitles.get(sid) ?? []) if (!p.titles.includes(title)) p.titles.push(title);
   }
-  t.daily = [...days].sort(([a], [b]) => a.localeCompare(b)).map(([date, d]) => ({ date, messages: d.messages, sessions: d.sessions.size, toolCalls: d.toolCalls }));
+  t.daily = [...days].sort(([a], [b]) => a.localeCompare(b)).map(([date, d]) => ({ date, messages: d.messages, sessions: sessionsByFirstDay[date] ?? 0, toolCalls: d.toolCalls }));
   t.dailyTokens = [...tokensByDate].sort(([a], [b]) => a.localeCompare(b)).map(([date, tokensByModel]) => ({ date, tokensByModel }));
   return t;
 }
@@ -485,6 +504,12 @@ var LANGUAGES = {
   ".toml": "Config"
 };
 var DEFAULT_RETENTION_DAYS = 30;
+var MAX_TRUSTED_CACHE_SESSION_MINUTES = 12 * 60;
+function pickLongestSessionMinutes(cacheMinutes, transcriptMinutes) {
+  const cache = cacheMinutes !== null && cacheMinutes <= MAX_TRUSTED_CACHE_SESSION_MINUTES ? cacheMinutes : null;
+  const best = Math.max(cache ?? 0, transcriptMinutes);
+  return best > 0 ? best : null;
+}
 var share = (part, whole) => whole > 0 ? part / whole : 0;
 var maxEntry = (o) => Object.entries(o).sort(([a, x], [b, y]) => y - x || a.localeCompare(b))[0]?.[0] ?? null;
 var baseName = (p) => p.includes("\\") ? path4.win32.basename(p) : path4.posix.basename(p);
@@ -583,7 +608,10 @@ async function buildStats(opts) {
     },
     sessions: {
       ...transcripts.sessions,
-      longestMinutesYear: ls && ls.timestamp && inYear(ls.timestamp.slice(0, 10)) ? Math.round(ls.durationMs / 6e4) : null
+      longestMinutesYear: pickLongestSessionMinutes(
+        ls && ls.timestamp && inYear(ls.timestamp.slice(0, 10)) ? Math.round(ls.durationMs / 6e4) : null,
+        transcripts.sessions.longestMinutes
+      )
     },
     projects: { count: list.length, branchCount: list.reduce((a, p) => a + p.branches.length, 0), list },
     tooling: { skills: tooling.skills, agents: tooling.agents, hooks: tooling.hooks, plugins: tooling.plugins },

@@ -13,7 +13,8 @@ test('sessions and subagents', () => {
   expect(t.sessions.subagentSessions).toBe(1);
 });
 
-test('session length from main file', () => expect(t.sessions.longestMinutes).toBe(30));
+test('session length is active time, so a session resumed days later stays short', () =>
+  expect(t.sessions.longestMinutes).toBe(30));
 
 test('tool calls, tests, commits, mcp, web searches', () => {
   expect(t.tools.calls).toBe(7);
@@ -30,7 +31,7 @@ test('denials split and attributed', () => {
 
 test('modes, effort, entrypoints', () => {
   expect(t.permissionModes).toEqual({ plan: 1, auto: 2 });
-  expect(t.effort).toEqual({ high: 1, medium: 1 });
+  expect(t.effort).toEqual({ xhigh: 1 });
   expect(t.entrypoints).toEqual({ 'claude-desktop': 1, cli: 1 });
 });
 
@@ -63,9 +64,14 @@ test('projects with branches and titles', () => {
 
 test('coverage and daily activity in local dates, 2025 skipped', () => {
   expect(t.from).toBe('2026-11-20');
-  expect(t.to).toBe('2026-11-21');
+  expect(t.to).toBe('2026-11-23');
   expect(t.daily).toEqual([
     { date: '2026-11-20', messages: 5, sessions: 1, toolCalls: 6 },
     { date: '2026-11-21', messages: 2, sessions: 1, toolCalls: 1 },
+    { date: '2026-11-23', messages: 1, sessions: 0, toolCalls: 0 },
   ]);
+});
+
+test('a session counts only on its first day, like stats-cache', () => {
+  expect(t.daily.reduce((a, d) => a + d.sessions, 0)).toBe(t.sessions.count);
 });

@@ -18,6 +18,14 @@ const LANGUAGES: Record<string, string> = {
 };
 
 const DEFAULT_RETENTION_DAYS = 30;
+/** stats-cache measures first to last message, so a session resumed weeks later looks weeks long. */
+const MAX_TRUSTED_CACHE_SESSION_MINUTES = 12 * 60;
+
+export function pickLongestSessionMinutes(cacheMinutes: number | null, transcriptMinutes: number): number | null {
+  const cache = cacheMinutes !== null && cacheMinutes <= MAX_TRUSTED_CACHE_SESSION_MINUTES ? cacheMinutes : null;
+  const best = Math.max(cache ?? 0, transcriptMinutes);
+  return best > 0 ? best : null;
+}
 
 const share = (part: number, whole: number): number => (whole > 0 ? part / whole : 0);
 const maxEntry = (o: Record<string, number>): string | null =>
@@ -134,7 +142,10 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
     },
     sessions: {
       ...transcripts.sessions,
-      longestMinutesYear: ls && ls.timestamp && inYear(ls.timestamp.slice(0, 10)) ? Math.round(ls.durationMs / 60000) : null,
+      longestMinutesYear: pickLongestSessionMinutes(
+        ls && ls.timestamp && inYear(ls.timestamp.slice(0, 10)) ? Math.round(ls.durationMs / 60000) : null,
+        transcripts.sessions.longestMinutes,
+      ),
     },
     projects: { count: list.length, branchCount: list.reduce((a, p) => a + p.branches.length, 0), list },
     tooling: { skills: tooling.skills, agents: tooling.agents, hooks: tooling.hooks, plugins: tooling.plugins },

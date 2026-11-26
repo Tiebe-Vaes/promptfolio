@@ -1,5 +1,5 @@
 import { beforeAll, expect, test } from 'vitest';
-import { buildStats } from '../src/buildStats.js';
+import { buildStats, pickLongestSessionMinutes } from '../src/buildStats.js';
 import type { Stats } from '../src/types.js';
 import { fixture, fixturePath } from './helpers.js';
 
@@ -18,9 +18,10 @@ test('buildStats on empty claude dir', async () => {
 });
 
 test('stats-cache before cutoff, transcripts after', () => {
-  expect(s.coverage).toEqual({ yearFrom: '2026-03-01', statsCacheThrough: '2026-11-11', detailedFrom: '2026-11-20', detailedTo: '2026-11-21', historyFrom: '2026-03-02' });
-  expect(s.activity.activeDays).toBe(5 + 2);
-  expect(s.activity.messages).toBe(20 + 30 + 5 + 40 + 15 + 5 + 2);
+  expect(s.coverage).toEqual({ yearFrom: '2026-03-01', statsCacheThrough: '2026-11-11', detailedFrom: '2026-11-20', detailedTo: '2026-11-23', historyFrom: '2026-03-02' });
+  expect(s.activity.activeDays).toBe(5 + 3);
+  expect(s.activity.messages).toBe(20 + 30 + 5 + 40 + 15 + 5 + 2 + 1);
+  expect(s.activity.sessions).toBe(8 - 1 + 2);
   expect(s.activity.longestStreakDays).toBe(3);
   expect(s.activity.busiestDay).toEqual({ date: '2026-03-10', messages: 40 });
   expect(s.activity.busiestMonth).toEqual({ month: '2026-03', messages: 95 });
@@ -50,4 +51,11 @@ test('longest session of the year from stats-cache', () => expect(s.sessions.lon
 test('tooling and retention', () => {
   expect(s.tooling).toEqual({ skills: 1, agents: 1, hooks: 2, plugins: 1 });
   expect(s.retention).toEqual({ cleanupPeriodDays: null, effectiveDays: 30 });
+});
+
+test('a resumed session in stats-cache does not count as one huge session', () => {
+  expect(pickLongestSessionMinutes(82317, 95)).toBe(95);
+  expect(pickLongestSessionMinutes(120, 30)).toBe(120);
+  expect(pickLongestSessionMinutes(null, 0)).toBeNull();
+  expect(pickLongestSessionMinutes(null, 40)).toBe(40);
 });
