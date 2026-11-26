@@ -37,7 +37,17 @@ export function longestActiveMinutes(sorted: number[]): number {
   return Math.round(best / 60_000);
 }
 
-const EDIT_TOOLS =new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+/**
+ * Display name for a tool. MCP tools become `mcp:<server>`: the tool part can reveal what the user did
+ * (for example a mail action) and connector servers are named by an ID, which becomes `connector`.
+ */
+export function toolLabel(name: string): string {
+  if (!name.startsWith('mcp__')) return name;
+  const server = name.split('__')[1] ?? '';
+  return !server || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(server) ? 'mcp:connector' : `mcp:${server}`;
+}
+
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const bump = (o: Record<string, number>, k: string, by = 1): void => { o[k] = (o[k] ?? 0) + by; };
 
@@ -154,10 +164,10 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
 
         for (const b of Array.isArray(r.message.content) ? r.message.content : []) {
           if (b?.type !== 'tool_use' || typeof b.name !== 'string') continue;
-          if (typeof b.id === 'string') toolNames.set(b.id, b.name);
+          if (typeof b.id === 'string') toolNames.set(b.id, toolLabel(b.name));
           t.tools.calls++;
           day(date).toolCalls++;
-          bump(t.tools.byName, b.name);
+          bump(t.tools.byName, toolLabel(b.name));
           if (b.name.startsWith('mcp__')) t.tools.mcpCalls++;
           if (b.name === 'WebSearch') t.tools.webSearches++;
           if (b.name === 'Bash' && typeof b.input?.command === 'string') {

@@ -23,11 +23,13 @@ export async function readStatsCache(file: string): Promise<StatsCacheData> {
   }
   if (!raw || typeof raw !== 'object') return { ...EMPTY };
   const ls = raw.longestSession;
+  const daily: DailyActivity[] = arr(raw.dailyActivity)
+    .filter(d => typeof d?.date === 'string')
+    .map(d => ({ date: d.date, messages: num(d.messageCount), sessions: num(d.sessionCount), toolCalls: num(d.toolCallCount) }));
   return {
-    through: str(raw.lastComputedDate),
-    daily: arr(raw.dailyActivity)
-      .filter(d => typeof d?.date === 'string')
-      .map(d => ({ date: d.date, messages: num(d.messageCount), sessions: num(d.sessionCount), toolCalls: num(d.toolCallCount) })),
+    // Without lastComputedDate, the latest cached day is the best cutoff we have.
+    through: str(raw.lastComputedDate) ?? (daily.map(d => d.date).sort().at(-1) ?? null),
+    daily,
     dailyTokens: arr(raw.dailyModelTokens)
       .filter(d => typeof d?.date === 'string' && d.tokensByModel && typeof d.tokensByModel === 'object')
       .map(d => ({ date: d.date, tokensByModel: d.tokensByModel })),

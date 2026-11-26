@@ -70,3 +70,9 @@ test('doctor CLI reports environment as JSON', () => {
   expect(d.node).toBe(process.version);
   expect('browser' in d).toBe(true);
 });
+
+test('doctor --projects lists project folder names for the pick flow', () => {
+  const r = run('doctor', ['--projects'], { ...process.env, CLAUDE_CONFIG_DIR: fixture() });
+  expect(r.status).toBe(0);
+  expect(JSON.parse(r.stdout).projects).toEqual(['alpha', 'beta']);
+});

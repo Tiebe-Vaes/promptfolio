@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A shareable year recap of your Claude Code use.",
+  "description": "Promptfolio: a shareable year recap of your Claude Code use. Scripts run on Node 18.3+; development needs Node 22.12+.",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12"
   },
   "scripts": {
     "test": "vitest run",

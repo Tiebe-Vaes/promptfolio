@@ -1,6 +1,6 @@
 import { beforeAll, expect, test } from 'vitest';
 import { findTranscripts } from '../src/jsonl.js';
-import { readTranscripts, type TranscriptStats } from '../src/sources/transcripts.js';
+import { readTranscripts, toolLabel, type TranscriptStats } from '../src/sources/transcripts.js';
 import { fixture } from './helpers.js';
 
 let t: TranscriptStats;
@@ -26,7 +26,16 @@ test('tool calls, tests, commits, mcp, web searches', () => {
 });
 
 test('denials split and attributed', () => {
-  expect(t.denials).toEqual({ userRejected: 1, automatic: 1, byTool: { Bash: 1, mcp__x__y: 1 } });
+  expect(t.denials).toEqual({ userRejected: 1, automatic: 1, byTool: { Bash: 1, 'mcp:x': 1 } });
+});
+
+test('MCP tool names keep the server and drop the tool and connector IDs', () => {
+  expect(toolLabel('mcp__x__y')).toBe('mcp:x');
+  expect(toolLabel('mcp__Claude_Browser__computer')).toBe('mcp:Claude_Browser');
+  expect(toolLabel('mcp__0507bbcb-3a0f-4173-a1c4-2b0043a8d3ec__send_message')).toBe('mcp:connector');
+  expect(toolLabel('Bash')).toBe('Bash');
+  expect(Object.keys(t.tools.byName)).toContain('mcp:x');
+  expect(JSON.stringify(t)).not.toContain('mcp__');
 });
 
 test('modes, effort, entrypoints', () => {

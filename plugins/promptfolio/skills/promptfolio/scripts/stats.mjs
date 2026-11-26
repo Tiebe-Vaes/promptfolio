@@ -165,6 +165,8 @@ function localMonth(ts, tz) {
 }
 
 // src/sources/history.ts
+var MAX_TIME = 864e13;
+var isValidTime = (v) => typeof v === "number" && Number.isFinite(v) && Math.abs(v) <= MAX_TIME;
 async function readHistory(file, opts) {
   const h = {
     from: null,
@@ -184,7 +186,7 @@ async function readHistory(file, opts) {
   const year = String(opts.year);
   for await (const row of readJsonl(file)) {
     const r = row;
-    if (typeof r.display !== "string" || typeof r.timestamp !== "number") continue;
+    if (typeof r.display !== "string" || !isValidTime(r.timestamp)) continue;
     const date = localDate(r.timestamp, opts.tz);
     if (!date.startsWith(year)) continue;
     if (typeof r.sessionId === "string") {
@@ -229,9 +231,11 @@ async function readStatsCache(file) {
   }
   if (!raw || typeof raw !== "object") return { ...EMPTY };
   const ls = raw.longestSession;
+  const daily = arr(raw.dailyActivity).filter((d) => typeof d?.date === "string").map((d) => ({ date: d.date, messages: num(d.messageCount), sessions: num(d.sessionCount), toolCalls: num(d.toolCallCount) }));
   return {
-    through: str(raw.lastComputedDate),
-    daily: arr(raw.dailyActivity).filter((d) => typeof d?.date === "string").map((d) => ({ date: d.date, messages: num(d.messageCount), sessions: num(d.sessionCount), toolCalls: num(d.toolCallCount) })),
+    // Without lastComputedDate, the latest cached day is the best cutoff we have.
+    through: str(raw.lastComputedDate) ?? (daily.map((d) => d.date).sort().at(-1) ?? null),
+    daily,
     dailyTokens: arr(raw.dailyModelTokens).filter((d) => typeof d?.date === "string" && d.tokensByModel && typeof d.tokensByModel === "object").map((d) => ({ date: d.date, tokensByModel: d.tokensByModel })),
     firstSessionDate: str(raw.firstSessionDate),
     longestSession: ls && typeof ls === "object" ? { durationMs: num(ls.duration), messages: num(ls.messageCount), timestamp: str(ls.timestamp) ?? "" } : null
@@ -283,6 +287,11 @@ function longestActiveMinutes(sorted) {
     }
   }
   return Math.round(best / 6e4);
+}
+function toolLabel(name) {
+  if (!name.startsWith("mcp__")) return name;
+  const server = name.split("__")[1] ?? "";
+  return !server || /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(server) ? "mcp:connector" : `mcp:${server}`;
 }
 var EDIT_TOOLS = /* @__PURE__ */ new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 var num2 = (v) => typeof v === "number" && Number.isFinite(v) ? v : 0;
@@ -393,10 +402,10 @@ async function readTranscripts(files, opts) {
         }
         for (const b of Array.isArray(r.message.content) ? r.message.content : []) {
           if (b?.type !== "tool_use" || typeof b.name !== "string") continue;
-          if (typeof b.id === "string") toolNames.set(b.id, b.name);
+          if (typeof b.id === "string") toolNames.set(b.id, toolLabel(b.name));
           t.tools.calls++;
           day(date).toolCalls++;
-          bump(t.tools.byName, b.name);
+          bump(t.tools.byName, toolLabel(b.name));
           if (b.name.startsWith("mcp__")) t.tools.mcpCalls++;
           if (b.name === "WebSearch") t.tools.webSearches++;
           if (b.name === "Bash" && typeof b.input?.command === "string") {
@@ -464,7 +473,7 @@ var RULES = [
   { id: "keepsControl", value: (s) => s.denials.userRejected, placeholder: "denials.userRejected", threshold: 10 },
   { id: "tests", value: (s) => s.tools.testRuns, placeholder: "tools.testRuns", threshold: 20 },
   { id: "ships", value: (s) => s.tools.commits, placeholder: "tools.commits", threshold: 20 },
-  { id: "buildsTooling", value: (s) => s.tooling.skills + s.tooling.agents + s.tooling.hooks, placeholder: "tooling.skills", threshold: 5 },
+  { id: "buildsTooling", value: (s) => s.tooling.total, placeholder: "tooling.total", threshold: 5 },
   { id: "researches", value: (s) => s.tools.webSearches, placeholder: "tools.webSearches", threshold: 25 },
   { id: "range", value: (s) => s.files.byLanguage.length, placeholder: "files.byLanguage.length", threshold: 3 },
   { id: "consistency", value: (s) => s.activity.longestStreakDays, placeholder: "activity.longestStreakDays", threshold: 7 }
@@ -506,9 +515,8 @@ var LANGUAGES = {
 var DEFAULT_RETENTION_DAYS = 30;
 var MAX_TRUSTED_CACHE_SESSION_MINUTES = 12 * 60;
 function pickLongestSessionMinutes(cacheMinutes, transcriptMinutes) {
-  const cache = cacheMinutes !== null && cacheMinutes <= MAX_TRUSTED_CACHE_SESSION_MINUTES ? cacheMinutes : null;
-  const best = Math.max(cache ?? 0, transcriptMinutes);
-  return best > 0 ? best : null;
+  if (cacheMinutes === null || cacheMinutes > MAX_TRUSTED_CACHE_SESSION_MINUTES) return null;
+  return Math.max(cacheMinutes, transcriptMinutes);
 }
 var share = (part, whole) => whole > 0 ? part / whole : 0;
 var maxEntry = (o) => Object.entries(o).sort(([a, x], [b, y]) => y - x || a.localeCompare(b))[0]?.[0] ?? null;
@@ -609,12 +617,18 @@ async function buildStats(opts) {
     sessions: {
       ...transcripts.sessions,
       longestMinutesYear: pickLongestSessionMinutes(
-        ls && ls.timestamp && inYear(ls.timestamp.slice(0, 10)) ? Math.round(ls.durationMs / 6e4) : null,
+        ls && ls.timestamp && !Number.isNaN(Date.parse(ls.timestamp)) && inYear(localDate(ls.timestamp, tz)) ? Math.round(ls.durationMs / 6e4) : null,
         transcripts.sessions.longestMinutes
       )
     },
     projects: { count: list.length, branchCount: list.reduce((a, p) => a + p.branches.length, 0), list },
-    tooling: { skills: tooling.skills, agents: tooling.agents, hooks: tooling.hooks, plugins: tooling.plugins },
+    tooling: {
+      skills: tooling.skills,
+      agents: tooling.agents,
+      hooks: tooling.hooks,
+      plugins: tooling.plugins,
+      total: tooling.skills + tooling.agents + tooling.hooks
+    },
     strengthCandidates: [],
     equivalents: computeEquivalents(history.prompts)
   };

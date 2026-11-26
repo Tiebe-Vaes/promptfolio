@@ -90,7 +90,8 @@ export interface Stats {
   files: { edited: number; byLanguage: { language: string; count: number }[] };
   sessions: TranscriptStats['sessions'] & { longestMinutesYear: number | null };
   projects: { count: number; branchCount: number; list: ProjectEntry[] };
-  tooling: { skills: number; agents: number; hooks: number; plugins: number };
+  /** total = skills + agents + hooks: things the user built, not installed plugins. */
+  tooling: { skills: number; agents: number; hooks: number; plugins: number; total: number };
   strengthCandidates: StrengthCandidate[];
   equivalents: EquivalentResult[];
 }

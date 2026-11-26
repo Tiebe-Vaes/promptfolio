@@ -49,13 +49,32 @@ test('projects labelled by folder name, sorted by sessions', () => {
 test('longest session of the year from stats-cache', () => expect(s.sessions.longestMinutesYear).toBe(120));
 
 test('tooling and retention', () => {
-  expect(s.tooling).toEqual({ skills: 1, agents: 1, hooks: 2, plugins: 1 });
+  expect(s.tooling).toEqual({ skills: 1, agents: 1, hooks: 2, plugins: 1, total: 4 });
   expect(s.retention).toEqual({ cleanupPeriodDays: null, effectiveDays: 30 });
 });
 
-test('a resumed session in stats-cache does not count as one huge session', () => {
-  expect(pickLongestSessionMinutes(82317, 95)).toBe(95);
+test('a year value only when the year-wide cache value is trustworthy', () => {
+  expect(pickLongestSessionMinutes(82317, 95)).toBeNull();
   expect(pickLongestSessionMinutes(120, 30)).toBe(120);
-  expect(pickLongestSessionMinutes(null, 0)).toBeNull();
-  expect(pickLongestSessionMinutes(null, 40)).toBe(40);
+  expect(pickLongestSessionMinutes(120, 300)).toBe(300);
+  expect(pickLongestSessionMinutes(null, 40)).toBeNull();
+});
+
+test('tooling total backs the buildsTooling strength', () => {
+  expect(s.tooling.total).toBe(1 + 1 + 2);
+  expect(s.strengthCandidates.find(c => c.id === 'buildsTooling')!.placeholder).toBe('tooling.total');
+});
+
+test('stats-cache without lastComputedDate keeps its days', async () => {
+  const { mkdtemp, writeFile } = await import('node:fs/promises');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pf-b-'));
+  await writeFile(path.join(dir, 'stats-cache.json'), JSON.stringify({ dailyActivity: [
+    { date: '2026-02-01', messageCount: 3, sessionCount: 1, toolCallCount: 1 },
+    { date: '2026-02-05', messageCount: 4, sessionCount: 1, toolCallCount: 2 },
+  ] }));
+  const b = await buildStats({ claudeDir: dir, year: 2026, tz: 'UTC', now: new Date('2026-11-27') });
+  expect(b.activity.activeDays).toBe(2);
+  expect(b.activity.messages).toBe(7);
 });

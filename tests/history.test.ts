@@ -35,3 +35,18 @@ test('missing history', async () => {
   expect(h.prompts).toBe(0);
   expect(h.from).toBeNull();
 });
+
+test('a malformed timestamp skips the line instead of aborting', async () => {
+  const { mkdtemp, writeFile } = await import('node:fs/promises');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pf-h-'));
+  const f = path.join(dir, 'history.jsonl');
+  await writeFile(f, [
+    JSON.stringify({ display: 'ok', timestamp: 1772442000000, sessionId: 'a' }),
+    JSON.stringify({ display: 'bad', timestamp: 1e20, sessionId: 'b' }),
+    JSON.stringify({ display: 'nan', timestamp: null, sessionId: 'c' }),
+  ].join('\n'));
+  const r = await readHistory(f, { year: 2026, tz: 'UTC' });
+  expect(r.prompts).toBe(1);
+});

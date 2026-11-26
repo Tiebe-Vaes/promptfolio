@@ -16,3 +16,8 @@ test('readTooling reads cleanupPeriodDays', async () => {
 
 test('readTooling on empty dir', async () =>
   expect(await readTooling(fixturePath('empty-home'))).toEqual({ skills: 0, agents: 0, hooks: 0, plugins: 0, cleanupPeriodDays: null }));
+
+test('listProjectNames gives folder names from history, most prompts first', async () => {
+  const { listProjectNames } = await import('../src/sources/history.js');
+  expect(await listProjectNames(fixture('history.jsonl'))).toEqual(['alpha', 'beta']);
+});

@@ -6,6 +6,7 @@ import { readStatsCache } from './sources/statsCache.js';
 import { readTooling } from './sources/tooling.js';
 import { readTranscripts } from './sources/transcripts.js';
 import { longestGap, longestStreak } from './streaks.js';
+import { localDate } from './time.js';
 import { strengthCandidates } from './strengths.js';
 import type { DailyActivity, ProjectEntry, Stats } from './types.js';
 
@@ -21,10 +22,13 @@ const DEFAULT_RETENTION_DAYS = 30;
 /** stats-cache measures first to last message, so a session resumed weeks later looks weeks long. */
 const MAX_TRUSTED_CACHE_SESSION_MINUTES = 12 * 60;
 
+/**
+ * A year-wide longest session needs the year-wide cache value. Without a trustworthy one, return null:
+ * the transcript window alone (about 30 days) would mislabel a month as the year.
+ */
 export function pickLongestSessionMinutes(cacheMinutes: number | null, transcriptMinutes: number): number | null {
-  const cache = cacheMinutes !== null && cacheMinutes <= MAX_TRUSTED_CACHE_SESSION_MINUTES ? cacheMinutes : null;
-  const best = Math.max(cache ?? 0, transcriptMinutes);
-  return best > 0 ? best : null;
+  if (cacheMinutes === null || cacheMinutes > MAX_TRUSTED_CACHE_SESSION_MINUTES) return null;
+  return Math.max(cacheMinutes, transcriptMinutes);
 }
 
 const share = (part: number, whole: number): number => (whole > 0 ? part / whole : 0);
@@ -143,12 +147,17 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
     sessions: {
       ...transcripts.sessions,
       longestMinutesYear: pickLongestSessionMinutes(
-        ls && ls.timestamp && inYear(ls.timestamp.slice(0, 10)) ? Math.round(ls.durationMs / 60000) : null,
+        ls && ls.timestamp && !Number.isNaN(Date.parse(ls.timestamp)) && inYear(localDate(ls.timestamp, tz))
+          ? Math.round(ls.durationMs / 60000)
+          : null,
         transcripts.sessions.longestMinutes,
       ),
     },
     projects: { count: list.length, branchCount: list.reduce((a, p) => a + p.branches.length, 0), list },
-    tooling: { skills: tooling.skills, agents: tooling.agents, hooks: tooling.hooks, plugins: tooling.plugins },
+    tooling: {
+      skills: tooling.skills, agents: tooling.agents, hooks: tooling.hooks, plugins: tooling.plugins,
+      total: tooling.skills + tooling.agents + tooling.hooks,
+    },
     strengthCandidates: [],
     equivalents: computeEquivalents(history.prompts),
   };

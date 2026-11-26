@@ -16,8 +16,8 @@ test('candidates sorted by score, zeros dropped', () => {
 });
 
 test('buildsTooling sums skills, agents and hooks', () => {
-  const c = strengthCandidates(merge(base, { tooling: { skills: 3, agents: 1, hooks: 6, plugins: 9 } }));
-  expect(c).toEqual([{ id: 'buildsTooling', value: 10, placeholder: 'tooling.skills', score: 2 }]);
+  const c = strengthCandidates(merge(base, { tooling: { skills: 3, agents: 1, hooks: 6, plugins: 9, total: 10 } }));
+  expect(c).toEqual([{ id: 'buildsTooling', value: 10, placeholder: 'tooling.total', score: 2 }]);
 });
 
 test('range counts languages', () => {

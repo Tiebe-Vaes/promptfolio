@@ -16,3 +16,16 @@ test('missing stats-cache', async () => {
   const d = await readStatsCache(fixture('nope.json'));
   expect(d).toEqual({ through: null, daily: [], dailyTokens: [], firstSessionDate: null, longestSession: null });
 });
+
+test('missing lastComputedDate falls back to the latest cached day', async () => {
+  const { mkdtemp, writeFile } = await import('node:fs/promises');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'pf-c-'));
+  const f = path.join(dir, 'stats-cache.json');
+  await writeFile(f, JSON.stringify({ dailyActivity: [
+    { date: '2026-02-01', messageCount: 3, sessionCount: 1, toolCallCount: 1 },
+    { date: '2026-02-05', messageCount: 4, sessionCount: 1, toolCallCount: 2 },
+  ] }));
+  expect((await readStatsCache(f)).through).toBe('2026-02-05');
+});
