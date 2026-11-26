@@ -1,10 +1,12 @@
 import path from 'node:path';
 import { findTranscripts } from './jsonl.js';
+import { computeEquivalents } from './equivalents.js';
 import { readHistory } from './sources/history.js';
 import { readStatsCache } from './sources/statsCache.js';
 import { readTooling } from './sources/tooling.js';
 import { readTranscripts } from './sources/transcripts.js';
 import { longestGap, longestStreak } from './streaks.js';
+import { strengthCandidates } from './strengths.js';
 import type { DailyActivity, ProjectEntry, Stats } from './types.js';
 
 const LANGUAGES: Record<string, string> = {
@@ -78,7 +80,7 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
   const ls = cache.longestSession;
   const yearFrom = [dates[0], history.from, transcripts.from].filter((d): d is string => !!d).sort()[0] ?? null;
 
-  return {
+  const stats: Stats = {
     schemaVersion: 1,
     year,
     generatedAt: opts.now.toISOString(),
@@ -137,6 +139,8 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
     projects: { count: list.length, branchCount: list.reduce((a, p) => a + p.branches.length, 0), list },
     tooling: { skills: tooling.skills, agents: tooling.agents, hooks: tooling.hooks, plugins: tooling.plugins },
     strengthCandidates: [],
-    equivalents: [],
+    equivalents: computeEquivalents(history.prompts),
   };
+  stats.strengthCandidates = strengthCandidates(stats);
+  return stats;
 }
