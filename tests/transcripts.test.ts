@@ -49,6 +49,13 @@ test('tokens', () => {
   expect(t.tokens.byModel).toEqual({ 'claude-opus-5-5': 1215, 'claude-sonnet-5': 58 });
 });
 
+test('tokens per local date and model', () => {
+  expect(t.dailyTokens).toEqual([
+    { date: '2026-11-20', tokensByModel: { 'claude-opus-5-5': 1215, 'claude-sonnet-5': 25 } },
+    { date: '2026-11-21', tokensByModel: { 'claude-sonnet-5': 33 } },
+  ]);
+});
+
 test('projects with branches and titles', () => {
   expect(t.projects['C:\\dev\\alpha']).toEqual({ sessions: 1, branches: ['feat/login'], titles: ['fix login sk-ant-api03-FAKEFAKEFAKEFAKEFAKE'] });
   expect(t.projects['C:\\dev\\beta'].branches).toEqual(['main']);

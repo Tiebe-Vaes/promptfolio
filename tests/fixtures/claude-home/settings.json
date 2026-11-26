@@ -1,0 +1,7 @@
+{
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "echo start" }] }],
+    "Stop": [{ "matcher": "", "hooks": [{ "type": "command", "command": "echo stop" }] }]
+  },
+  "enabledPlugins": { "a@m": true, "b@m": false }
+}

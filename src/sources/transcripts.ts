@@ -8,6 +8,8 @@ export interface TranscriptStats {
   from: string | null;
   to: string | null;
   daily: DailyActivity[];
+  /** Same shape as stats-cache dailyModelTokens, so the two can be merged at a date cutoff. */
+  dailyTokens: { date: string; tokensByModel: Record<string, number> }[];
   tokens: { input: number; output: number; cacheRead: number; cacheCreation: number; thinking: number; byModel: Record<string, number> };
   tools: { calls: number; byName: Record<string, number>; bash: number; testRuns: number; commits: number; mcpCalls: number; webSearches: number };
   denials: { userRejected: number; automatic: number; byTool: Record<string, number> };
@@ -25,7 +27,7 @@ const bump = (o: Record<string, number>, k: string, by = 1): void => { o[k] = (o
 
 export async function readTranscripts(files: string[], opts: { year: number; tz: string }): Promise<TranscriptStats> {
   const t: TranscriptStats = {
-    from: null, to: null, daily: [],
+    from: null, to: null, daily: [], dailyTokens: [],
     tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, thinking: 0, byModel: {} },
     tools: { calls: 0, byName: {}, bash: 0, testRuns: 0, commits: 0, mcpCalls: 0, webSearches: 0 },
     denials: { userRejected: 0, automatic: 0, byTool: {} },
@@ -42,6 +44,7 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
   const sessionTitles = new Map<string, Set<string>>();
   const branches = new Map<string, Set<string>>();
   const edited = new Set<string>();
+  const tokensByDate = new Map<string, Record<string, number>>();
 
   const day = (date: string) => {
     let d = days.get(date);
@@ -120,7 +123,12 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
         t.tokens.cacheCreation += cacheCreation;
         t.tokens.thinking += num(u.output_tokens_details?.thinking_tokens);
         t.tools.webSearches += num(u.server_tool_use?.web_search_requests);
-        if (typeof r.message.model === 'string') bump(t.tokens.byModel, r.message.model, input + output + cacheRead + cacheCreation);
+        if (typeof r.message.model === 'string') {
+          const total = input + output + cacheRead + cacheCreation;
+          bump(t.tokens.byModel, r.message.model, total);
+          if (!tokensByDate.has(date)) tokensByDate.set(date, {});
+          bump(tokensByDate.get(date)!, r.message.model, total);
+        }
 
         for (const b of Array.isArray(r.message.content) ? r.message.content : []) {
           if (b?.type !== 'tool_use' || typeof b.name !== 'string') continue;
@@ -159,5 +167,6 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
   }
   t.daily = [...days].sort(([a], [b]) => a.localeCompare(b))
     .map(([date, d]) => ({ date, messages: d.messages, sessions: d.sessions.size, toolCalls: d.toolCalls }));
+  t.dailyTokens = [...tokensByDate].sort(([a], [b]) => a.localeCompare(b)).map(([date, tokensByModel]) => ({ date, tokensByModel }));
   return t;
 }
