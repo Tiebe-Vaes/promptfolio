@@ -1,0 +1,6 @@
+{
+  "name": "promptfolio",
+  "version": "0.1.0",
+  "description": "Turn your local Claude Code history into a shareable year recap.",
+  "author": { "name": "Tiebe Vaes" }
+}

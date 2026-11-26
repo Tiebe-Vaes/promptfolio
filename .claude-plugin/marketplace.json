@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "promptfolio",
+  "description": "Promptfolio: a shareable year recap of your Claude Code use.",
+  "owner": { "name": "Tiebe Vaes" },
+  "plugins": [
+    {
+      "name": "promptfolio",
+      "description": "Turn your local Claude Code history into a year recap: a story, share cards and a README card.",
+      "source": "./plugins/promptfolio",
+      "category": "productivity"
+    }
+  ]
+}
