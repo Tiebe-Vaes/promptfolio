@@ -26,6 +26,19 @@ export interface EquivalentResult {
   sourceUrl: string;
 }
 
+/** Text Claude writes. Numbers only appear as {dotted.path} placeholders into Stats. */
+export interface Copy {
+  schemaVersion: 1;
+  vibe: 'professional' | 'fun' | 'roast';
+  language: 'en' | 'nl';
+  profile?: { headline: string; strengths: { id: StrengthId; text: string }[] };
+  persona?: { className: string; specialMove: string; weakness: string; nemesis: string };
+  diary?: string[];
+  awards?: { title: string; text: string }[];
+  relationship?: { status: string; text: string };
+  captions: Record<string, string>;
+}
+
 export interface ProjectEntry {
   key: string;
   label: string;
