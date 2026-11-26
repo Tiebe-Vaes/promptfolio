@@ -17,5 +17,12 @@
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
     "vitest": "^5.1.2"
-  }
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tiebe-Vaes/promptfolio.git"
+  },
+  "homepage": "https://github.com/Tiebe-Vaes/promptfolio",
+  "author": "Tiebe Vaes"
 }

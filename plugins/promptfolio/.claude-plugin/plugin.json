@@ -1,6 +1,19 @@
 {
   "name": "promptfolio",
   "version": "0.1.0",
-  "description": "Turn your local Claude Code history into a shareable year recap.",
-  "author": { "name": "Tiebe Vaes" }
+  "description": "A shareable year recap of your Claude Code use, built from your local logs. Nothing leaves your machine.",
+  "author": {
+    "name": "Tiebe Vaes",
+    "url": "https://github.com/Tiebe-Vaes"
+  },
+  "homepage": "https://github.com/Tiebe-Vaes/promptfolio",
+  "repository": "https://github.com/Tiebe-Vaes/promptfolio",
+  "license": "MIT",
+  "keywords": [
+    "recap",
+    "year-in-review",
+    "stats",
+    "wrapped",
+    "claude-code"
+  ]
 }
