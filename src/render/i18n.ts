@@ -15,6 +15,19 @@ const STRINGS = {
     since: (d: string) => `since ${d}`,
     messagesPerMonth: 'messages per month', save: 'Save image', screenshot: 'Screenshot this slide to share it',
     next: 'Next', previous: 'Previous',
+    card: {
+      tokens: 'Tokens', year: 'Year in numbers', toolkit: 'Toolkit', growth: 'Growth',
+      tokensYear: 'tokens this year', written: 'tokens written', favorite: 'favourite model', energy: 'energy', water: 'water',
+      glasses: (f: string) => `${f} glasses`, estimate: 'estimate', apiNote: 'estimate at API prices',
+      prompts: 'Prompts', slash: 'Slash commands', politeness: '"please" and "thanks"', toolCalls: 'Tool calls', commits: 'Commits',
+      webSearches: 'Web searches', subagents: 'Subagents', filesEdited: 'Files edited', apiValue: 'API value',
+      topTools: 'top tools', languages: 'Languages', topFirst: (l: string) => `${l} first`, setup: 'Own setup', plugins: 'Plugins',
+      skills: (n: number, f: string) => `${f} skill${n === 1 ? '' : 's'}`, agents: (n: number, f: string) => `${f} agent${n === 1 ? '' : 's'}`,
+      hooks: (n: number, f: string) => `${f} hook${n === 1 ? '' : 's'}`,
+      busier: (from: string, to: string) => `busier in ${to} than in ${from}`, messagesYear: 'messages this year',
+      messages: 'Messages', busiestMonth: 'Busiest month', streak: 'Longest streak', gap: 'Longest break',
+      days: (n: number, f: string) => `${f} day${n === 1 ? '' : 's'}`, msgs: (f: string) => `${f} messages`,
+    },
   },
   nl: {
     tokensRead: 'tokens gelezen', tokensWritten: 'tokens geschreven', activeDays: (n: number, f: string, from: string, to: string) => `${f} actieve dag${n === 1 ? '' : 'en'}, ${from} tot ${to}`,
@@ -29,6 +42,19 @@ const STRINGS = {
     since: (d: string) => `sinds ${d}`,
     messagesPerMonth: 'berichten per maand', save: 'Afbeelding opslaan', screenshot: 'Maak een screenshot van deze slide om te delen',
     next: 'Volgende', previous: 'Vorige',
+    card: {
+      tokens: 'Tokens', year: 'Jaar in cijfers', toolkit: 'Toolkit', growth: 'Groei',
+      tokensYear: 'tokens dit jaar', written: 'tokens geschreven', favorite: 'favoriete model', energy: 'energie', water: 'water',
+      glasses: (f: string) => `${f} glazen`, estimate: 'schatting', apiNote: 'schatting aan API-prijzen',
+      prompts: 'Prompts', slash: 'Slash commands', politeness: '"alsjeblieft" en "bedankt"', toolCalls: 'Toolcalls', commits: 'Commits',
+      webSearches: 'Webzoekopdrachten', subagents: 'Subagents', filesEdited: 'Bestanden bewerkt', apiValue: 'API-waarde',
+      topTools: 'top tools', languages: 'Talen', topFirst: (l: string) => `${l} eerst`, setup: 'Eigen setup', plugins: 'Plugins',
+      skills: (n: number, f: string) => `${f} skill${n === 1 ? '' : 's'}`, agents: (n: number, f: string) => `${f} agent${n === 1 ? '' : 's'}`,
+      hooks: (n: number, f: string) => `${f} hook${n === 1 ? '' : 's'}`,
+      busier: (from: string, to: string) => `drukker in ${to} dan in ${from}`, messagesYear: 'berichten dit jaar',
+      messages: 'Berichten', busiestMonth: 'Drukste maand', streak: 'Langste reeks', gap: 'Langste pauze',
+      days: (n: number, f: string) => `${f} dag${n === 1 ? '' : 'en'}`, msgs: (f: string) => `${f} berichten`,
+    },
   },
 } as const;
 
@@ -38,6 +64,12 @@ export const t = (lang: Lang) => STRINGS[lang];
 export function shortDate(date: string, lang: Lang): string {
   const [y, m, d] = date.split('-').map(Number);
   return new Intl.DateTimeFormat(lang === 'nl' ? 'nl-BE' : 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d)));
+}
+
+/** "October" / "oktober" for a YYYY-MM month. */
+export function longMonth(month: string, lang: Lang): string {
+  const [y, m] = month.split('-').map(Number);
+  return new Intl.DateTimeFormat(lang === 'nl' ? 'nl-BE' : 'en-US', { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, 15)));
 }
 
 /** "Apr" / "apr." for a YYYY-MM month. */
