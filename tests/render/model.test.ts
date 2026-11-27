@@ -99,3 +99,13 @@ test('strings are escaped', () => {
   expect(m.line).not.toContain('<img');
 });
 
+
+test('equivalents that round to zero are left out', () => {
+  const s = merge(stats, { equivalents: [
+    { id: 'energy', value: 0.3, unit: 'Wh', label: 'e', sourceUrl: 'x' },
+    { id: 'water', value: 0.004, unit: 'glasses', label: 'w', sourceUrl: 'x' },
+  ] });
+  const labels = buildCard('tokens', s, proCopy)!.items.map(i => i.label);
+  expect(labels).not.toContain('energy');
+  expect(labels).not.toContain('water');
+});

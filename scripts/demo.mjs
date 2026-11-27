@@ -47,9 +47,12 @@ function demoStats(base) {
       growth: { first: { month: first.month, messages: first.messages }, peak: { month: peak.month, messages: peak.messages }, factor: Math.round(peak.messages / first.messages) },
     },
     tokens: { ...base.tokens, yearTotal, yearOutput, usageFrom: null, readPerWritten: Math.round(yearTotal / yearOutput), byModel: { 'claude-opus-5-5': 7_900_000_000, 'claude-sonnet-5-5': 1_512_000_000 }, favoriteModel: { model: 'claude-opus-5-5', share: 0.84 } },
-    prompts: { ...base.prompts, count: 1_204, politeness: 61, corrections: 87 },
+    // Same per-prompt factors as src/equivalents.ts (Google's published Gemini figures).
+    equivalents: (base.equivalents ?? []).map(e => ({ ...e, value: e.id === 'energy' ? 1_204 * 0.24 : 1_204 * 0.26 / 250 })),
+    prompts: { ...base.prompts, count: 1_204, slashCommands: 96, politeness: 61, corrections: 87 },
+    sessions: { ...base.sessions, subagentSessions: 140 },
     tools: { ...base.tools, calls: 18_406, bash: 7_204, testRuns: 862, commits: 455, webSearches: 318, mcpCalls: 2_210,
-      top: [{ name: 'Bash', count: 7204 }, { name: 'Edit', count: 3120 }, { name: 'Read', count: 2804 }, { name: 'mcp:Claude_Browser', count: 1350 }] },
+      top: [{ name: 'Bash', count: 7204 }, { name: 'Edit', count: 3120 }, { name: 'Read', count: 2804 }, { name: 'mcp:Claude_Browser', count: 1350 }, { name: 'Write', count: 990 }, { name: 'Grep', count: 640 }, { name: 'WebSearch', count: 318 }] },
     files: { edited: 1_032, topLanguage: 'Python', byLanguage: [{ language: 'Python', count: 512 }, { language: 'TypeScript', count: 288 }, { language: 'SQL', count: 91 }, { language: 'Markdown', count: 80 }, { language: 'Go', count: 61 }] },
     tooling: { skills: 4, agents: 2, hooks: 3, plugins: 6, total: 9 },
     apiValue: { usd: 3_912.4, models: ['claude-opus-5-5', 'claude-sonnet-5-5'], skippedModels: [], pricesAsOf: base.apiValue?.pricesAsOf ?? '2026-11-03' },
@@ -62,49 +65,31 @@ function demoStats(base) {
   };
 }
 
-const copies = {
-  fun: {
-    schemaVersion: 1, vibe: 'fun', language: 'en',
-    persona: {
-      className: 'Query Druid', specialMove: 'Rewrites the SQL until it sings', weakness: 'plan mode', nemesis: 'flaky tests',
-      moves: [
-        { name: 'Shell Storm', value: '{tools.bash}', text: 'Lives in the terminal, visits the editor.' },
-        { name: 'Red Then Green', value: '{tools.testRuns}', text: 'Watches every test fail first.' },
-        { name: 'Quiet Commit', value: '{tools.commits}', text: 'Ships in small, tidy steps.' },
-      ],
-    },
-    diary: ['Another dataframe. Another join.', 'We made the tests pass at midnight.', 'He said thanks again. I like him.'],
-    awards: [{ title: 'Test Fiend', text: '{tools.testRuns} test runs' }, { title: 'Polite One', text: '{prompts.politeness} thank-yous' }, { title: 'Polyglot', text: '{files.byLanguage.length} languages' }],
-    relationship: { status: 'Steady', text: 'Never more than {activity.longestGapDays} days apart.' },
-    tokensLine: 'Claude reread your code {tokens.readPerWritten} times for every token it wrote back.',
-    verdict: 'You make it pass, then you make it clean.',
-    receiptFooter: 'No refunds on tokens.',
-    captions: {},
+const copy = {
+  schemaVersion: 2, vibe: 'professional', language: 'en', title: 'Python builder',
+  lines: {
+    tokens: 'Claude reread the code {tokens.readPerWritten} times for every token it wrote.',
+    year: 'Ships in small steps: {tools.commits} commits this year.',
+    toolkit: 'Shell first, {files.byLanguage.length} languages deep.',
+    growth: '{activity.growth.factor} times busier by {activity.growth.peak.month}.',
   },
-  pro: {
-    schemaVersion: 1, vibe: 'professional', language: 'en',
-    profile: {
-      headline: '{activity.activeDays} days building with Claude Code',
-      strengths: [
-        { id: 'tests', text: 'Tests as a habit: {tools.testRuns} test runs' },
-        { id: 'ships', text: 'Ships: {tools.commits} commits from sessions' },
-        { id: 'researches', text: 'Researches first: {tools.webSearches} web searches' },
-      ],
-    },
-    tokensLine: 'Claude reread your code {tokens.readPerWritten} times for every token it wrote back.',
-    verdict: 'You test first and ship often.',
-    growthLine: '{activity.growth.factor} times busier by {activity.growth.peak.month}',
-    captions: {},
+  captions: {
+    instagram: 'My year with Claude Code, in four cards.',
+    linkedin: '{tools.commits} commits and {tools.webSearches} web searches with Claude Code this year.',
+    x: 'My Claude Code year: {tools.commits} commits.',
+    discord: 'Made my Claude Code recap.',
   },
 };
 
-for (const [name, copy] of Object.entries(copies)) {
-  const dir = path.join(out, name);
+// One folder per style, each in a different palette, so the README shows the range.
+const looks = { clean: 'auto', receipt: 'sunset', terminal: 'ink', card: 'grape' };
+for (const [style, palette] of Object.entries(looks)) {
+  const dir = path.join(out, style);
   fs.rmSync(dir, { recursive: true, force: true });
   run('stats', ['--claude-dir', 'tests/fixtures/claude-home', '--year', '2026', '--tz', 'UTC', '--out', dir]);
   const stats = demoStats(JSON.parse(fs.readFileSync(path.join(dir, 'stats.json'), 'utf8')));
   fs.writeFileSync(path.join(dir, 'stats.json'), JSON.stringify(stats, null, 2));
   fs.writeFileSync(path.join(dir, 'copy.json'), JSON.stringify(copy, null, 2));
-  run('render', ['--dir', dir, '--targets', name === 'fun' ? 'instagram,x' : 'instagram,linkedin']);
+  run('render', ['--dir', dir, '--style', style, '--palette', palette, '--formats', style === 'clean' ? 'story,wide,readme' : 'story,wide']);
 }
 console.log('demo rendered to design/demo');

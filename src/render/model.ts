@@ -88,10 +88,11 @@ export function buildCard(id: CardId, stats: Stats, copy: Copy, picked: CardId[]
     const fav = stats.tokens.favoriteModel;
     if (fav) add(s.favorite, 1, `${modelLabel(fav.model)}, ${Math.round(fav.share * 100)}%`);
     const eq = new Map(stats.equivalents.map(e => [e.id, e.value]));
+    // A value that rounds to 0 ("0 Wh", "0 glasses") says nothing; leave it out.
     const wh = eq.get('energy');
-    if (wh) add(s.energy, wh, `${n(wh)} Wh`, s.estimate);
+    if (wh && wh >= 0.5) add(s.energy, wh, `${n(wh)} Wh`, s.estimate);
     const water = eq.get('water');
-    if (water) add(s.water, water, s.glasses(num(water, lang, 1)), s.estimate);
+    if (water && water >= 0.05) add(s.water, water, s.glasses(num(water, lang, 1)), s.estimate);
     return { ...base, hero: { value: compact(stats.tokens.yearTotal, lang), label: escapeHtml(s.tokensYear) }, items };
   }
 

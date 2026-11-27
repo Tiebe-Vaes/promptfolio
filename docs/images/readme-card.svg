@@ -6,6 +6,7 @@ text { font-family: Archivo, sans-serif; fill: #10151C; }
 .y { font-weight: 600; font-size: 28px; fill: #4B5563; }
 .v { font-weight: 900; font-size: 64px; }
 .l { font-weight: 500; font-size: 24px; fill: #4B5563; }
+.r { font-weight: 500; font-size: 22px; fill: #6B7280; }
 .line { fill: none; stroke: #3572A5; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; animation: draw 1.6s cubic-bezier(.22,1,.36,1) both; }
 @keyframes draw { from { stroke-dashoffset: 1; } }
 @media (prefers-reduced-motion: reduce) { .line { animation: none; } }
@@ -18,4 +19,5 @@ text { font-family: Archivo, sans-serif; fill: #10151C; }
 <text x="300" y="280" class="v">544</text><text x="300" y="318" class="l">sessions</text>
 <text x="500" y="280" class="v">Python</text><text x="500" y="318" class="l">top language</text>
 <path d="M920.0 301.6 L948.8 276.1 L977.5 244.4 L1006.3 228.7 L1035.0 226.0 L1063.8 142.0 L1092.5 139.0 L1121.3 110.0 L1150.0 145.0" class="line" pathLength="1"/>
+<text x="1150" y="376" text-anchor="end" class="r">github.com/Tiebe-Vaes/promptfolio</text>
 </svg>
