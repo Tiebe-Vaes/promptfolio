@@ -1,6 +1,6 @@
 {
   "name": "promptfolio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Promptfolio: a shareable year recap of your Claude Code use. Scripts run on Node 18.3+; development needs Node 22.12+.",

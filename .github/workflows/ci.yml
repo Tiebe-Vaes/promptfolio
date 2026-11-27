@@ -48,5 +48,5 @@ jobs:
           test -s out/stats.json && test -s out/sample.json
           echo '{"schemaVersion":2,"vibe":"fun","language":"en","title":"Shell Warlock","lines":{"tokens":"Tokens.","year":"A year.","toolkit":"Tools.","growth":"Growth."},"captions":{"instagram":"a","linkedin":"b","x":"c","discord":"d"}}' > out/copy.json
           node $S/validate.mjs out/copy.json out/stats.json
-          node $S/render.mjs --dir out --no-png
-          test -s out/story.html && test -s out/readme-card.svg
+          node $S/render.mjs --dir out --no-png --style receipt --palette grape --cards tokens,year --formats square,readme
+          test -s out/story.html && test -s out/readme-card.svg && test -s out/captions.json && test -s out/cards/receipt-year-square.html

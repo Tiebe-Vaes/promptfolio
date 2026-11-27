@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.3.0 (unreleased)
+
+- Four cards with fixed content: Tokens, Year in numbers, Toolkit and Growth.
+- Four styles for all four cards: Clean, Receipt, Terminal and Trading card (a booster pack, 1/4 to 4/4).
+- Four colours: your top language's colour, Ink, Grape or Sunset.
+- New flow: Make it now, or Personalise in five taps (style, tone, formats, cards, colour). Works the same in the CLI and the desktop app.
+- Formats you pick, and only those are rendered: Story 9:16, Square 1:1, Wide 16:9, GitHub README 3:1. About two seconds per PNG.
+- Share step: a caption per platform from your real numbers, a prefilled X post, links to every file. The repo link is on every card and caption.
+- English only.
+- Copy v2: a title, one line per card and four captions. Diary, awards, relationship and card moves are gone.
+
+## 0.2.0 (not published, replaced by 0.3.0)
 
 - Visual recap: `story.html` with token pair and year heatmap, receipt, terminal replay, trading card (Fun, Roast me) and growth closer (Professional).
 - Share PNGs per platform (Instagram story, feed, landscape) rendered with the local Chrome, Edge or Brave; works without one (story only).
