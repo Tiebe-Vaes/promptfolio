@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Promptfolio, closer slide visualizers</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Libre+Franklin:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --lang: #3178C6; --ink: #10151C; }
+  body { margin: 0; background: #DADDE2; font: 15px/1.5 'Libre Franklin', sans-serif; color: #1d232b; }
+  .page { padding: 32px 40px 60px; }
+  .page > h1 { font: 800 24px/1.2 Archivo, sans-serif; margin: 0 0 6px; }
+  .page > p { margin: 0 0 28px; max-width: 900px; color: #3d4652; }
+  .grid { display: grid; grid-template-columns: repeat(3, max-content); gap: 28px; }
+  figure { margin: 0; }
+  figcaption { margin-top: 10px; max-width: 290px; font-size: 13px; color: #3d4652; }
+  figcaption b { color: #10151C; }
+  .board { width: 1080px; height: 1920px; zoom: 0.268; border-radius: 36px; overflow: hidden; position: relative; box-sizing: border-box; font-family: Archivo, sans-serif; }
+  .progress { position: absolute; top: 48px; left: 64px; right: 64px; display: flex; gap: 10px; }
+  .progress i { flex: 1; height: 8px; border-radius: 4px; background: #fff; }
+  .light .progress i { background: var(--ink); }
+  .viz { position: absolute; top: 140px; left: 64px; right: 64px; }
+  .copy { position: absolute; left: 72px; right: 72px; bottom: 100px; }
+  .lead { font-weight: 900; font-size: 140px; line-height: .92; letter-spacing: -.02em; }
+  ul { list-style: none; padding: 0; margin: 60px 0 0; display: grid; gap: 26px; }
+  li { display: grid; grid-template-columns: 300px 1fr; align-items: baseline; font-size: 42px; line-height: 1.2; padding-top: 22px; }
+  li b { font-weight: 900; font-size: 84px; }
+  .dark { background: var(--ink); color: #fff; }
+  .dark li { border-top: 2px solid #2A3340; color: #C9D2DD; }
+  .dark li b { color: #fff; }
+  .light { background: #fff; color: var(--ink); }
+  .light li { border-top: 3px solid #E3E7EC; color: #4B5563; }
+  .light li b { color: var(--ink); }
+  .axis { font-size: 30px; fill: #8B97A7; font-family: Archivo, sans-serif; }
+  .light .axis { fill: #6B7280; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Closer slide, three visualizers instead of the clock</h1>
+  <p>All real data from your history: weekday by hour, messages per month, files edited per language. Each sits above the same three strengths, so the professional version still ends on a profile.</p>
+  <div class="grid">
+    <figure>
+      <div class="board dark">
+        <div class="progress"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <svg class="viz" id="punch" width="952" height="760" viewBox="0 0 952 760"></svg>
+        <div class="copy">
+          <div class="lead">Mondays at 11</div>
+          <ul>
+            <li><b>1,094</b><span>test runs. Tests as a habit.</span></li>
+            <li><b>700</b><span>commits made from sessions.</span></li>
+            <li><b>11</b><span>languages, mostly TypeScript.</span></li>
+          </ul>
+        </div>
+      </div>
+      <figcaption><b>Week rhythm.</b> One dot per weekday and hour, sized by your prompts. Shows when you work, including the weekends.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="board light">
+        <div class="progress"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <svg class="viz" id="growth" width="952" height="760" viewBox="0 0 952 760"></svg>
+        <div class="copy">
+          <div class="lead">29 times busier by October</div>
+          <ul>
+            <li><b>1,094</b><span>test runs. Tests as a habit.</span></li>
+            <li><b>700</b><span>commits made from sessions.</span></li>
+            <li><b>11</b><span>languages, mostly TypeScript.</span></li>
+          </ul>
+        </div>
+      </div>
+      <figcaption><b>Growth.</b> Messages per month as one line, April to November. Tells the "I leveled up" story recruiters like.</figcaption>
+    </figure>
+
+    <figure>
+      <div class="board light">
+        <div class="progress"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="viz" id="langs" style="display:grid;gap:14px"></div>
+        <div class="copy">
+          <div class="lead" style="font-size:112px">11 languages, TypeScript first</div>
+          <ul>
+            <li><b>1,094</b><span>test runs. Tests as a habit.</span></li>
+            <li><b>700</b><span>commits made from sessions.</span></li>
+            <li><b>1,740</b><span>files edited this year.</span></li>
+          </ul>
+        </div>
+      </div>
+      <figcaption><b>Language stack.</b> Files edited per language, each bar in that language's own colour. Your stack at a glance.</figcaption>
+    </figure>
+  </div>
+</div>
+<script>
+const ns = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+
+// Week rhythm: prompts per weekday (Mon..Sun) and hour, from history.jsonl
+const WEEK = [[0,0,0,0,0,0,0,0,0,5,43,47,36,33,15,22,18,8,6,2,39,34,10,2],[1,0,0,0,0,0,0,0,2,6,17,17,10,7,15,5,12,4,7,8,10,6,6,0],[0,0,0,0,0,0,0,0,0,11,10,20,21,17,21,42,11,20,24,13,16,15,4,11],[2,0,0,0,0,0,0,0,5,18,18,24,27,4,27,9,8,5,1,0,2,1,6,0],[4,3,0,0,0,0,0,0,1,5,10,23,17,28,26,21,12,20,7,13,23,5,5,0],[0,0,0,0,0,0,0,0,0,1,17,20,25,19,15,27,41,16,9,11,24,8,20,12],[0,0,0,0,0,0,0,0,1,9,4,19,11,28,19,19,10,39,5,8,1,3,10,29]];
+(function punch() {
+  const svg = document.getElementById('punch');
+  const max = Math.max(...WEEK.flat());
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const hours = [8, 10, 12, 14, 16, 18, 20, 22, 0];
+  const cols = 17; // 07:00 to 23:00 plus midnight hour
+  const order = [...Array(17).keys()].map(i => (i + 7) % 24);
+  const x0 = 110, cw = (952 - x0) / cols, rh = 92;
+  WEEK.forEach((row, d) => {
+    el('text', { x: 0, y: 40 + d * rh + 12, class: 'axis' }, svg).textContent = days[d];
+    order.forEach((h, i) => {
+      const v = row[h];
+      const r = v ? 6 + 30 * Math.sqrt(v / max) : 3;
+      el('circle', { cx: x0 + cw * i + cw / 2, cy: 40 + d * rh, r, fill: v === max ? '#8FC0F4' : (v ? '#3C6FA8' : '#2A3340') }, svg);
+    });
+  });
+  for (const h of [8, 12, 16, 20]) {
+    const i = order.indexOf(h);
+    el('text', { x: x0 + cw * i + cw / 2, y: 40 + 7 * rh, class: 'axis', 'text-anchor': 'middle' }, svg).textContent = String(h).padStart(2, '0');
+  }
+})();
+
+// Growth: messages per month (July had no activity)
+const MONTHS = [['Apr', 1678], ['May', 17875], ['Jun', 5359], ['Jul', 0], ['Aug', 9305], ['Sep', 3068], ['Oct', 48701], ['Nov', 41847]];
+(function growth() {
+  const svg = document.getElementById('growth');
+  const max = Math.max(...MONTHS.map(m => m[1]));
+  const x = i => 20 + i * (900 / (MONTHS.length - 1));
+  const y = v => 640 - 560 * (v / max);
+  const pts = MONTHS.map((m, i) => [x(i), y(m[1])]);
+  el('path', { d: `M${pts[0][0]} 640 ` + pts.map(p => `L${p[0]} ${p[1]}`).join(' ') + ` L${pts.at(-1)[0]} 640 Z`, fill: '#E3EDF8' }, svg);
+  el('path', { d: 'M' + pts.map(p => p.join(' ')).join(' L'), fill: 'none', stroke: '#3178C6', 'stroke-width': 10, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+  pts.forEach((p, i) => {
+    el('text', { x: p[0], y: 700, class: 'axis', 'text-anchor': 'middle' }, svg).textContent = MONTHS[i][0];
+    if (i === 0 || MONTHS[i][1] === max) el('circle', { cx: p[0], cy: p[1], r: 14, fill: '#10151C' }, svg);
+  });
+  el('text', { x: pts[0][0] + 26, y: pts[0][1] - 26, class: 'axis' }, svg).textContent = '1,678';
+  const pk = MONTHS.findIndex(m => m[1] === max);
+  el('text', { x: pts[pk][0] - 20, y: pts[pk][1] - 30, class: 'axis', 'text-anchor': 'end' }, svg).textContent = '48,701 messages';
+})();
+
+// Language stack: files edited per language, bar in the language's GitHub colour
+const LANGS = [['TypeScript', 698, '#3178C6'], ['Markdown', 388, '#083FA1'], ['Java', 182, '#B07219'], ['Python', 81, '#3572A5'], ['HTML', 62, '#E34C26'], ['C#', 55, '#178600'], ['JavaScript', 49, '#C9B400'], ['Kotlin', 41, '#A97BFF'], ['CSS', 16, '#563D7C'], ['SQL', 9, '#E38C00']];
+(function langs() {
+  const box = document.getElementById('langs');
+  const max = LANGS[0][1];
+  for (const [name, n, color] of LANGS) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:260px 1fr 110px;align-items:center;gap:20px;font-size:34px;color:#10151C';
+    row.innerHTML = `<span>${name}</span><span style="height:44px;border-radius:8px;background:${color};width:${Math.max(2, 100 * n / max)}%"></span><span style="text-align:right;color:#4B5563">${n}</span>`;
+    box.appendChild(row);
+  }
+})();
+</script>
+</body>
+</html>
