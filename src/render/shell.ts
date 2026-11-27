@@ -1,8 +1,10 @@
-export type SizeName = 'story' | 'feed' | 'landscape' | 'readme';
+export type SizeName = 'story' | 'square' | 'wide' | 'feed' | 'landscape' | 'readme';
 export type Size = { name: SizeName; w: number; h: number };
 
 export const SIZES: Record<SizeName, Size> = {
   story: { name: 'story', w: 1080, h: 1920 },
+  square: { name: 'square', w: 1080, h: 1080 },
+  wide: { name: 'wide', w: 1200, h: 675 },
   feed: { name: 'feed', w: 1080, h: 1350 },
   landscape: { name: 'landscape', w: 1200, h: 675 },
   readme: { name: 'readme', w: 1200, h: 400 },
