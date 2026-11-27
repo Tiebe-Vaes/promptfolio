@@ -13,17 +13,20 @@ Turns the user's local Claude Code history into a year recap. Code computes ever
 
 1. **Check Node.** Run `node -v`. Done when it prints v18.3 or higher. If Node is missing or older, tell the user Promptfolio needs Node 18.3+ and end here.
 2. **Doctor.** Run `node "<skill>/scripts/doctor.mjs"`. Done when you have its JSON. If `claudeDirExists` is false, tell the user no Claude Code data was found at `claudeDir` and end here.
-3. **Onboarding.** Say: "Quick setup (5 taps), or type go for the professional version." Then ask with AskUserQuestion (it takes at most 4 questions and 4 options each, so ask in two rounds):
-   - Round 1: Vibe (Professional / Fun / Roast me) · Posting where, multi-select (Instagram story / LinkedIn / X or Discord / Just me) · Project names (Hide all / Pick which / Show) · Language (English / Nederlands)
-   - Round 2, only for Fun or Roast me: Theme (Trading card)
+3. **Onboarding.** Say: "Quick setup (4 taps), or type go for the professional version." Then ask one AskUserQuestion with four questions:
+   - Vibe: Professional / Fun / Roast me
+   - Posting where (multi-select): Instagram story / LinkedIn / X or Discord / Just me. Map the answers to `--targets`: Instagram story → `instagram`, LinkedIn → `linkedin`, X or Discord → `x,discord`, Just me → no targets.
+   - Project names: Hide all / Pick which / Show
+   - Language: English / Nederlands
 
-   "go" at any point means: professional, hide, English, all formats. For "Pick which", run `node "<skill>/scripts/doctor.mjs" --projects`, show the user the `projects` list, and ask which names may appear. Done when vibe, project mode (plus allowed names for pick) and language are known.
+   "go" at any point means: professional, hide, English, targets `instagram,linkedin,x`. For "Pick which", run `node "<skill>/scripts/doctor.mjs" --projects`, show the user the `projects` list, and ask which names may appear. Done when vibe, project mode (plus allowed names for pick) and language are known.
 4. **Retention.** If `cleanupPeriodDays` is null or below 366, explain: Claude Code deletes detailed session logs after that many days (30 by default), so this recap's detailed stats cover only that window. Offer to set `cleanupPeriodDays` to 400 in `<claudeDir>/settings.json` so next year's recap is complete. Edit the file only after the user says yes, preserving every other setting.
 5. **Privacy line.** Show exactly: "The scripts upload nothing. Claude reads redacted stats in your own session to write the text."
 6. **Stats.** Run `node "<skill>/scripts/stats.mjs" --out ./promptfolio-<year> --projects <hide|pick|show> [--allow name1,name2]`. Done when it prints the paths of `stats.json` and `sample.json`.
 7. **Write the copy.** Read both files, then write `./promptfolio-<year>/copy.json` following **Copy rules** below.
 8. **Validate.** Run `node "<skill>/scripts/validate.mjs" ./promptfolio-<year>/copy.json ./promptfolio-<year>/stats.json`. Each output line names a JSON path and the problem; fix those and rerun. Done when it prints `OK`. After 3 failed rounds, show the user the remaining errors.
-9. **Preview.** Show the copy as plain text with every `{placeholder}` replaced by its value from `stats.json` (percentages for paths ending in `Share`). Tell the user the visual story and share cards come in the next version.
+9. **Render.** Run `node "<skill>/scripts/render.mjs" --dir ./promptfolio-<year> --targets <targets>` (omit `--targets` for Just me). It prints every file it wrote. Rendering PNGs takes about ten seconds per image; say so before you start. Done when it exits 0.
+10. **Show it.** Open `./promptfolio-<year>/story.html` (`start ""` on Windows, `open` on macOS, `xdg-open` on Linux). List the PNGs in `cards/` by where they fit: `*-story.png` for Instagram stories, `*-feed.png` for feed posts and LinkedIn, `*-landscape.png` for X, Discord and LinkedIn link posts. Mention `readme-card.svg` for a GitHub profile README (commit it to the profile repo and reference it with `![Promptfolio](readme-card.svg)`). If render said no browser was found, tell the user the story still works and screenshots are the way to share.
 
 ## Copy rules
 

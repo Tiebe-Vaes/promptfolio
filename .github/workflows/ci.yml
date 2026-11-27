@@ -17,9 +17,17 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Install Chrome so the PNG tests run
+        if: runner.os == 'Linux'
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          install-dependencies: true
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+        env:
+          PROMPTFOLIO_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
       - run: npm run build
       - name: Built scripts are committed and fresh
         run: git diff --exit-code plugins/
@@ -47,3 +55,5 @@ jobs:
           test -s out/stats.json && test -s out/sample.json
           echo '{"schemaVersion":1,"vibe":"fun","language":"en","persona":{"className":"a","specialMove":"b","weakness":"c","nemesis":"d","moves":[{"name":"a","value":"{tools.bash}","text":"b"},{"name":"c","value":"{tools.commits}","text":"d"},{"name":"e","value":"{tools.testRuns}","text":"f"}]},"tokensLine":"Tokens.","verdict":"Fine.","receiptFooter":"Thanks.","diary":["a","b","c"],"awards":[{"title":"a","text":"b"},{"title":"c","text":"d"},{"title":"e","text":"f"}],"relationship":{"status":"a","text":"b"},"captions":{}}' > out/copy.json
           node $S/validate.mjs out/copy.json out/stats.json
+          node $S/render.mjs --dir out --no-png
+          test -s out/story.html && test -s out/readme-card.svg
