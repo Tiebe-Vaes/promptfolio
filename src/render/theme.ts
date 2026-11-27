@@ -69,13 +69,14 @@ const FONT_FILES: { family: string; file: string; weight: string; stretch?: stri
 const fontCache = new Map<string, string>();
 
 /** @font-face rules with the fonts inlined as base64, so pages work offline and in screenshots. */
-export function fontFaceCss(assetsDir: string): string {
-  const cached = fontCache.get(assetsDir);
+export function fontFaceCss(assetsDir: string, only?: string[]): string {
+  const key = `${assetsDir}|${only?.join(',') ?? '*'}`;
+  const cached = fontCache.get(key);
   if (cached) return cached;
-  const css = FONT_FILES.map(f => {
+  const css = FONT_FILES.filter(f => !only || only.includes(f.family.replaceAll('"', ''))).map(f => {
     const data = fs.readFileSync(path.join(assetsDir, 'fonts', f.file)).toString('base64');
     return `@font-face { font-family: ${f.family}; src: url(data:font/woff2;base64,${data}) format('woff2'); font-weight: ${f.weight};${f.stretch ? ` font-stretch: ${f.stretch};` : ''} font-display: block; }`;
   }).join('\n');
-  fontCache.set(assetsDir, css);
+  fontCache.set(key, css);
   return css;
 }

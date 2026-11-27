@@ -1,6 +1,6 @@
 import { build } from 'esbuild';
 
-const names = ['stats', 'validate', 'doctor'];
+const names = ['stats', 'validate', 'doctor', 'render'];
 
 await build({
   entryPoints: Object.fromEntries(names.map(n => [n, `src/cli/${n}.ts`])),
