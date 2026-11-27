@@ -52,6 +52,14 @@ test('apiValue covers the year usage', () => {
   expect(s.apiValue!.usd).toBeGreaterThan(0);
 });
 
+test('model loyalty is the model with most year tokens', () =>
+  expect(s.tokens.favoriteModel).toEqual({ model: 'claude-opus-5-5', share: (500 + 2000 + 1215) / (1500 + 2000 + 1215 + 58) }));
+
+test('first prompt of the year is a local date only', () => {
+  expect(s.prompts.firstDate).toBe('2026-03-02');
+  expect(JSON.stringify(s.prompts)).not.toContain('please fix');
+});
+
 test('empty home has no extras', async () => {
   const { fixturePath } = await import('./helpers.js');
   const e = await buildStats({ claudeDir: fixturePath('empty-home'), year: 2026, tz: 'UTC', now: new Date('2026-11-27') });

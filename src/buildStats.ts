@@ -38,6 +38,13 @@ const maxEntry = (o: Record<string, number>): string | null =>
   Object.entries(o).sort(([a, x], [b, y]) => y - x || a.localeCompare(b))[0]?.[0] ?? null;
 const baseName = (p: string): string => (p.includes('\\') ? path.win32.basename(p) : path.posix.basename(p));
 
+/** Model with the most tokens and its share of all tokens. */
+function favoriteModel(byModel: Record<string, number>): { model: string; share: number } | null {
+  const total = Object.values(byModel).reduce((a, b) => a + b, 0);
+  const top = maxEntry(byModel);
+  return top && total > 0 ? { model: top, share: byModel[top] / total } : null;
+}
+
 export async function buildStats(opts: { claudeDir: string; year: number; tz: string; now: Date }): Promise<Stats> {
   const { claudeDir, year, tz } = opts;
   const y = String(year);
@@ -132,6 +139,7 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
       detailed: transcripts.tokens,
       yearOutput,
       readPerWritten: null,
+      favoriteModel: favoriteModel(byModel),
     },
     prompts: {
       count: history.prompts,
@@ -140,6 +148,7 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
       corrections: history.corrections,
       languages: history.languages,
       byMonth: history.byMonth,
+      firstDate: history.from,
     },
     tools: {
       ...transcripts.tools,

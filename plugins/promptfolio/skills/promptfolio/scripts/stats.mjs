@@ -598,6 +598,11 @@ function pickLongestSessionMinutes(cacheMinutes, transcriptMinutes) {
 var share = (part, whole) => whole > 0 ? part / whole : 0;
 var maxEntry = (o) => Object.entries(o).sort(([a, x], [b, y]) => y - x || a.localeCompare(b))[0]?.[0] ?? null;
 var baseName = (p) => p.includes("\\") ? path4.win32.basename(p) : path4.posix.basename(p);
+function favoriteModel(byModel) {
+  const total = Object.values(byModel).reduce((a, b) => a + b, 0);
+  const top = maxEntry(byModel);
+  return top && total > 0 ? { model: top, share: byModel[top] / total } : null;
+}
 async function buildStats(opts) {
   const { claudeDir, year, tz } = opts;
   const y = String(year);
@@ -676,7 +681,8 @@ async function buildStats(opts) {
       byModel,
       detailed: transcripts.tokens,
       yearOutput,
-      readPerWritten: null
+      readPerWritten: null,
+      favoriteModel: favoriteModel(byModel)
     },
     prompts: {
       count: history.prompts,
@@ -684,7 +690,8 @@ async function buildStats(opts) {
       politeness: history.politeness,
       corrections: history.corrections,
       languages: history.languages,
-      byMonth: history.byMonth
+      byMonth: history.byMonth,
+      firstDate: history.from
     },
     tools: {
       ...transcripts.tools,

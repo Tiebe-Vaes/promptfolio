@@ -91,6 +91,8 @@ export interface Stats {
     yearOutput: number | null;
     /** Tokens read (all, incl. cache) per token written. */
     readPerWritten: number | null;
+    /** Model with the most year tokens and its share (0..1). */
+    favoriteModel: { model: string; share: number } | null;
   };
   prompts: {
     count: number;
@@ -99,6 +101,8 @@ export interface Stats {
     corrections: number;
     languages: { en: number; nl: number; other: number };
     byMonth: HistoryStats['byMonth'];
+    /** Local date of the first prompt this year (no text). */
+    firstDate: string | null;
   };
   tools: TranscriptStats['tools'] & { top: { name: string; count: number }[] };
   denials: { userRejected: number; automatic: number; topDeniedTool: string | null };
