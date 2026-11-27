@@ -10,9 +10,14 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "build": "node esbuild.config.mjs"
+    "build": "node esbuild.config.mjs",
+    "fonts": "node scripts/copy-fonts.mjs"
   },
   "devDependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource/big-shoulders-display": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/libre-franklin": "^5.3.0",
     "@types/node": "^26.6.11",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
