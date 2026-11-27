@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, expect, test } from 'vitest';
 import { readmeCard } from '../../src/render/readme.js';
+import { REPO } from '../../src/render/brand.js';
 import type { Stats } from '../../src/types.js';
 import { emptyStats, fixtureStats, funCopy } from './ctx.js';
 
@@ -13,6 +14,7 @@ test('readme svg is self-contained', () => {
   const svg = readmeCard({ stats, copy: funCopy, assetsDir });
   expect(svg).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" width="1200" height="400"/);
   expect(svg.replace('xmlns="http://www.w3.org/2000/svg"', '')).not.toMatch(/https?:/);
+  expect(svg).toContain(REPO);
   expect(svg).toContain('data:font/woff2;base64,');
   expect(svg).toContain('Promptfolio');
   expect(svg).toContain('prefers-reduced-motion');

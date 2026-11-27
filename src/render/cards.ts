@@ -1,53 +1,39 @@
 import type { Copy, Stats } from '../types.js';
 import type { Lang } from './i18n.js';
+import { buildCard, CARD_IDS, type CardId, type CardModel } from './model.js';
 import { page, SIZES, type SizeName } from './shell.js';
-import { BASE_CSS, type SlideCtx, type SlideId, type SlideOut } from './slide.js';
-import * as card from './slides/card.js';
-import * as growth from './slides/growth.js';
-import * as receipt from './slides/receipt.js';
-import * as terminal from './slides/terminal.js';
-import * as tokens from './slides/tokens.js';
+import * as card from './styles/card.js';
+import * as clean from './styles/clean.js';
+import * as receipt from './styles/receipt.js';
+import type { StyleCtx, StyleId, StyleOut } from './styles/style.js';
+import * as terminal from './styles/terminal.js';
 import { fontFaceCss, languageColor } from './theme.js';
 
-export type Vibe = Copy['vibe'];
-export type Target = 'instagram' | 'linkedin' | 'x' | 'discord';
+export type CardFormat = 'story' | 'square' | 'wide';
+export const CARD_FORMATS: CardFormat[] = ['story', 'square', 'wide'];
 
-const RENDERERS: Record<SlideId, (ctx: SlideCtx) => SlideOut> = {
-  tokens: tokens.render, receipt: receipt.render, terminal: terminal.render, card: card.render, growth: growth.render,
+const STYLES: Record<StyleId, (m: CardModel, ctx: StyleCtx) => StyleOut> = {
+  clean: clean.render, receipt: receipt.render, terminal: terminal.render, card: card.render,
 };
 
-export function storySlides(vibe: Vibe): SlideId[] {
-  return vibe === 'professional' ? ['tokens', 'terminal', 'receipt', 'growth'] : ['tokens', 'receipt', 'terminal', 'card'];
+export const BASE_CSS = `
+.slide { position: relative; overflow: hidden; flex: none; }
+`;
+
+export function renderCard(style: StyleId, model: CardModel, ctx: StyleCtx): StyleOut {
+  return STYLES[style](model, ctx);
 }
 
-const closer = (vibe: Vibe): SlideId => (vibe === 'professional' ? 'growth' : 'card');
-
-/** Which PNGs to export for the places the user posts to. The receipt in feed size is always included. */
-export function shareCards(vibe: Vibe, targets: Target[]): { slide: SlideId; size: SizeName }[] {
-  const out: { slide: SlideId; size: SizeName }[] = [];
-  const add = (slide: SlideId, size: SizeName) => {
-    if (!out.some(o => o.slide === slide && o.size === size)) out.push({ slide, size });
-  };
-  if (targets.includes('instagram')) for (const s of storySlides(vibe)) add(s, 'story');
-  if (targets.includes('linkedin')) { add(closer(vibe), 'feed'); add(closer(vibe), 'landscape'); }
-  if (targets.includes('x') || targets.includes('discord')) add(closer(vibe), 'landscape');
-  add('receipt', 'feed');
-  return out;
+export function styleCtx(stats: Stats, copy: Copy, size: SizeName, extra: Partial<StyleCtx> = {}): StyleCtx {
+  return { stats, lang: copy.language as Lang, theme: languageColor(stats.files.topLanguage), size: SIZES[size], index: 0, total: 1, ...extra };
 }
 
-export function renderSlide(id: SlideId, ctx: SlideCtx): SlideOut {
-  return RENDERERS[id](ctx);
-}
-
-export function slideCtx(stats: Stats, copy: Copy, size: SizeName, extra: Partial<SlideCtx> = {}): SlideCtx {
-  return { stats, copy, lang: copy.language as Lang, theme: languageColor(stats.files.topLanguage), size: SIZES[size], index: 0, total: 1, ...extra };
-}
-
-/** One share card as its own HTML document at exact pixel size, ready for a screenshot. Null when the slide has no data. */
-export function cardDocument(id: SlideId, size: SizeName, stats: Stats, copy: Copy, assetsDir: string): string | null {
-  const out = renderSlide(id, slideCtx(stats, copy, size));
-  if (!out) return null;
-  const { w, h } = SIZES[size];
+/** One card as its own HTML document at exact pixel size, ready for a screenshot. Null when the card has no data. */
+export function cardDocument(style: StyleId, id: CardId, format: CardFormat, stats: Stats, copy: Copy, assetsDir: string, picked: CardId[] = CARD_IDS): string | null {
+  const model = buildCard(id, stats, copy, picked);
+  if (!model) return null;
+  const out = renderCard(style, model, styleCtx(stats, copy, format));
+  const { w, h } = SIZES[format];
   return page({
     title: `Promptfolio ${id}`,
     lang: copy.language,

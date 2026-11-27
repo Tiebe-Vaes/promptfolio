@@ -1,4 +1,5 @@
 import type { Copy, Stats } from '../types.js';
+import { REPO } from './brand.js';
 import { compact, escapeHtml, num } from './escape.js';
 import { t, type Lang } from './i18n.js';
 import { fontFaceCss, languageColor } from './theme.js';
@@ -28,6 +29,7 @@ text { font-family: Archivo, sans-serif; fill: #10151C; }
 .y { font-weight: 600; font-size: 28px; fill: #4B5563; }
 .v { font-weight: 900; font-size: 64px; }
 .l { font-weight: 500; font-size: 24px; fill: #4B5563; }
+.r { font-weight: 500; font-size: 22px; fill: #6B7280; }
 .line { fill: none; stroke: ${theme.accent}; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; animation: draw 1.6s cubic-bezier(.22,1,.36,1) both; }
 @keyframes draw { from { stroke-dashoffset: 1; } }
 @media (prefers-reduced-motion: reduce) { .line { animation: none; } }
@@ -40,6 +42,7 @@ ${stat(s.tokensRead, compact(stats.tokens.yearTotal, lang), 64)}
 ${stat(s.sessions.toLowerCase(), num(stats.activity.sessions, lang), 300)}
 ${stats.files.topLanguage ? stat(s.topLanguage, stats.files.topLanguage, 500) : ''}
 ${line ? `<path d="${line}" class="line" pathLength="1"/>` : ''}
+<text x="1150" y="376" text-anchor="end" class="r">${REPO}</text>
 </svg>
 `;
 }

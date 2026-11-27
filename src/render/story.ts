@@ -1,24 +1,25 @@
 import type { Copy, Stats } from '../types.js';
-import { renderSlide, slideCtx, storySlides } from './cards.js';
+import { BASE_CSS, renderCard, styleCtx } from './cards.js';
 import { t, type Lang } from './i18n.js';
+import { buildCard, CARD_IDS, type CardModel } from './model.js';
 import { page, PROGRESS_CSS } from './shell.js';
-import { BASE_CSS, type SlideId } from './slide.js';
+import type { StyleId } from './styles/style.js';
 import { fontFaceCss } from './theme.js';
 
 /**
- * The tap-through story: one self-contained HTML file, one slide at a time, scaled to the window.
- * `pngs` lists the card files that were actually rendered (e.g. "cards/card-story.png"); others get a screenshot hint.
+ * The tap-through story: every card that has data, in one style, one at a time, scaled to the window.
+ * `pngs` lists the card files that exist (e.g. "cards/clean-tokens-story.png"); others get a screenshot hint.
  */
-export function buildStory(opts: { stats: Stats; copy: Copy; assetsDir: string; pngs: Set<string> }): string {
-  const { stats, copy } = opts;
+export function buildStory(opts: { stats: Stats; copy: Copy; style: StyleId; assetsDir: string; pngs: Set<string> }): string {
+  const { stats, copy, style } = opts;
   const lang = copy.language as Lang;
   const s = t(lang);
-  const ids = storySlides(copy.vibe).filter(id => renderSlide(id, slideCtx(stats, copy, 'story')) !== null);
+  const models = CARD_IDS.map(id => buildCard(id, stats, copy)).filter((m): m is CardModel => m !== null);
   const css = new Set<string>([BASE_CSS, PROGRESS_CSS]);
-  const slides = ids.map((id: SlideId, i) => {
-    const out = renderSlide(id, slideCtx(stats, copy, 'story', { index: i, total: ids.length, progress: true }))!;
+  const slides = models.map((m, i) => {
+    const out = renderCard(style, m, styleCtx(stats, copy, 'story', { index: i, total: models.length, progress: true }));
     css.add(out.css);
-    const png = `cards/${id}-story.png`;
+    const png = `cards/${style}-${m.id}-story.png`;
     const action = opts.pngs.has(png)
       ? `<a class="save" href="${png}" download>${s.save}</a>`
       : `<span class="hint">${s.screenshot}</span>`;

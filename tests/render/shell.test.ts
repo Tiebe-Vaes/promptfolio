@@ -21,8 +21,8 @@ test('fill escapes after filling', () =>
 
 test('sizes match the spec', () => {
   expect(SIZES.story).toEqual({ name: 'story', w: 1080, h: 1920 });
-  expect(SIZES.feed).toEqual({ name: 'feed', w: 1080, h: 1350 });
-  expect(SIZES.landscape).toEqual({ name: 'landscape', w: 1200, h: 675 });
+  expect(SIZES.square).toEqual({ name: 'square', w: 1080, h: 1080 });
+  expect(SIZES.wide).toEqual({ name: 'wide', w: 1200, h: 675 });
   expect(SIZES.readme).toEqual({ name: 'readme', w: 1200, h: 400 });
 });
 
