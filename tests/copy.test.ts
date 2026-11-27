@@ -44,6 +44,9 @@ test('fun and roast use the same shape', () => {
   expect(validateCopy({ ...copy, vibe: 'roast' }, stats).ok).toBe(true);
 });
 
+test('output is English only', () =>
+  expect(validateCopy({ ...copy, language: 'nl' } as any, stats).errors).toContain('language: must be "en"'));
+
 test('schemaVersion must be 2', () =>
   expect(validateCopy({ ...copy, schemaVersion: 1 } as any, stats).errors).toContain('schemaVersion: must be 2'));
 
@@ -90,7 +93,6 @@ test('non-object input rejected without throwing', () => {
 });
 
 test('fillPlaceholders formats per language', () => {
-  expect(fillPlaceholders('{tools.testRuns} tests', merge(stats, { tools: { testRuns: 1234 } }), 'nl')).toBe('1.234 tests');
   expect(fillPlaceholders('{tools.testRuns} tests', merge(stats, { tools: { testRuns: 1234 } }), 'en')).toBe('1,234 tests');
   expect(fillPlaceholders('{modes.planShare}', merge(stats, { modes: { planShare: 0.38 } }), 'en')).toBe('38%');
   expect(fillPlaceholders('{files.byLanguage.length} languages', stats, 'en')).toBe('2 languages');
@@ -98,5 +100,4 @@ test('fillPlaceholders formats per language', () => {
 
 test('month placeholder renders as a name', () => {
   expect(fillPlaceholders('{activity.growth.peak.month}', stats, 'en')).toBe('March');
-  expect(fillPlaceholders('{activity.growth.peak.month}', stats, 'nl')).toBe('maart');
 });

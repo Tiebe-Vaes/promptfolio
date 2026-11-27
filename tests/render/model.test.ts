@@ -99,8 +99,3 @@ test('strings are escaped', () => {
   expect(m.line).not.toContain('<img');
 });
 
-test('dutch labels and numbers', () => {
-  const m = buildCard('year', merge(stats, { activity: { toolCalls: 128631 } }), { ...proCopy, language: 'nl' })!;
-  expect(m.heading).toBe('Jaar in cijfers');
-  expect(values(m)).toContain('128.631');
-});

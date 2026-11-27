@@ -27,9 +27,9 @@ test('sizes match the spec', () => {
 });
 
 test('page has no external URLs and respects reduced motion', () => {
-  const html = page({ title: 'T', css: '.a{}', body: '<p>x</p>', fontsCss: '', lang: 'nl' });
+  const html = page({ title: 'T', css: '.a{}', body: '<p>x</p>', fontsCss: '', lang: 'en' });
   expect(html).toMatch(/^<!doctype html>/);
-  expect(html).toContain('<html lang="nl">');
+  expect(html).toContain('<html lang="en">');
   expect(html).toContain('prefers-reduced-motion');
   expect(html).not.toMatch(/https?:\/\//);
 });

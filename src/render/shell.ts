@@ -9,7 +9,7 @@ export const SIZES: Record<SizeName, Size> = {
 };
 
 /** A complete, self-contained HTML document. */
-export function page(opts: { title: string; css: string; body: string; fontsCss: string; lang: 'en' | 'nl' }): string {
+export function page(opts: { title: string; css: string; body: string; fontsCss: string; lang: 'en' }): string {
   return `<!doctype html>
 <html lang="${opts.lang}">
 <head>

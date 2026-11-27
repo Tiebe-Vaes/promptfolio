@@ -32,7 +32,7 @@ Quality over speed. There is no hard launch date, though early December (Wrapped
   - **Fun:** light, laughable.
   - **Roast me:** honest, can sting, about habits only.
 - Every card and the README card carry the repo link `github.com/Tiebe-Vaes/promptfolio` in small type at the bottom.
-- English and Dutch output.
+- English only: questions, copy, cards and story (decided by Tiebe, 2026-11-27, v0.3). Dutch prompts are still read for the politeness and correction counts.
 - Everything runs locally. The tool's own scripts upload nothing. The only data that leaves the machine is the redacted stats and sample that Claude reads in the user's own session to write the text (see Privacy).
 
 ## Non-goals (v1)
@@ -107,7 +107,7 @@ All questions use Claude Code's own question picker (AskUserQuestion), so the fl
    2. Tone (single): Professional / Fun / Roast me.
    3. Formats (multi): Story 9:16 / Square 1:1 / Wide 16:9 / GitHub README 3:1.
    4. Cards (multi): Tokens / Year in numbers / Toolkit / Growth, each described in one line with the user's numbers.
-   Language follows the conversation (English or Dutch). The year is the current one; only in January or February does the skill ask whether the user means last year.
+   Everything is in English. The year is the current one; only in January or February does the skill ask whether the user means last year.
 5. Claude reads `stats.json` plus the redacted sample and writes `copy.json`; validate; on failure fix and rerun.
 6. Render only the picked cards and formats, plus `story.html` → output folder. Tell the user the PNG time first (about 10 s each).
 7. Say where everything is: the folder and every file as clickable links (absolute paths).

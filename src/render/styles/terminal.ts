@@ -15,7 +15,7 @@ export function render(m: CardModel, ctx: StyleCtx): StyleOut {
     m.bars.length ? `<div class="chart">${m.bars.map(b => `<div class="cr${b.peak ? ' pk' : ''}"><span class="k">${b.label}</span>${bar(b.value / peak)}<span class="v">${num(b.value, ctx.lang)}</span></div>`).join('')}</div>` : '',
     m.tools.length ? `<div class="chart">${m.tools.slice(0, TOOLS[ctx.size.name] ?? 10).map(x => `<div class="cr"><span class="v name">${x.name}</span>${bar(x.share)}<span class="v">${x.count}</span></div>`).join('')}</div>` : '',
     m.items.length ? `<div class="rows">${m.items.map(i => row(i.label, `${i.value}${i.note ? ` <span class="k">(${i.note})</span>` : ''}`)).join('')}</div>` : '',
-    m.sum ? row(m.sum.label, `${m.sum.value} <span class="k">(${m.sum.note})</span>`, 'hl') : '',
+    m.sum ? `<div>${row(m.sum.label, m.sum.value, 'hl')}<div class="k">(${m.sum.note})</div></div>` : '',
   ].join('');
   const inner = `<div class="win">
     <div class="dots"><i></i><i></i><i></i></div>
@@ -31,7 +31,7 @@ export function render(m: CardModel, ctx: StyleCtx): StyleOut {
 
 const CSS = `
 .st-terminal { --f: 36px; background: #0D1117; color: #D7DEE8; font: 400 var(--f)/1.5 "IBM Plex Mono", monospace; padding: 130px 60px 70px; }
-.st-terminal.size-square { --f: 25px; padding: 56px; }
+.st-terminal.size-square { --f: 23px; padding: 52px; }
 .st-terminal.size-wide { --f: 18px; padding: 36px 44px; }
 .st-terminal .win { border-radius: calc(var(--f) * .6); background: #161B22; border: 2px solid #262D37; padding: calc(var(--f) * 1.2) calc(var(--f) * 1.3); height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: calc(var(--f) * .5); }
 .st-terminal .dots { display: flex; gap: calc(var(--f) * .4); margin-bottom: calc(var(--f) * .5); }
@@ -42,6 +42,7 @@ const CSS = `
 .st-terminal .body { display: flex; flex-direction: column; gap: calc(var(--f) * .7); margin: calc(var(--f) * .5) 0; min-height: 0; flex: 0 1 auto; overflow: hidden; }
 .st-terminal.size-wide .hero b { font-size: calc(var(--f) * 2); }
 .st-terminal.size-wide .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 2.4em; align-content: start; }
+.st-terminal.size-wide .chart { grid-column: 2; grid-row: 1 / span 3; }
 .st-terminal .hero b { font-size: calc(var(--f) * 2.6); line-height: 1.05; color: #FFFFFF; }
 .st-terminal .row { display: flex; justify-content: space-between; gap: 1em; }
 .st-terminal .row .v, .st-terminal .row .hl { text-align: right; white-space: nowrap; }

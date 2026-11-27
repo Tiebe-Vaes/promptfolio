@@ -38,7 +38,8 @@ export interface EquivalentResult {
 export interface Copy {
   schemaVersion: 2;
   vibe: 'professional' | 'fun' | 'roast';
-  language: 'en' | 'nl';
+  /** Output is English only. */
+  language: 'en';
   /** The user's title: the trading card's name, the clean style's header. */
   title: string;
   /** One line per card; growth only when the growth card renders. */

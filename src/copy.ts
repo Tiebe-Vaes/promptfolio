@@ -23,22 +23,23 @@ function resolve(stats: Stats, path: string): number | string | undefined {
   return typeof v === 'number' || typeof v === 'string' ? v : undefined;
 }
 
-function format(path: string, value: number | string, language: 'en' | 'nl'): string {
+function format(path: string, value: number | string): string {
   if (typeof value === 'string') {
     if (path.endsWith('.month') && /^\d{4}-\d{2}$/.test(value)) {
       const [y, m] = value.split('-').map(Number);
-      return new Intl.DateTimeFormat(language === 'nl' ? 'nl-BE' : 'en-US', { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, 15)));
+      return new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, 15)));
     }
     return value;
   }
   if (path.endsWith('Share') && value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
-  return new Intl.NumberFormat(language === 'nl' ? 'nl-BE' : 'en-US', { maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(value);
 }
 
-export function fillPlaceholders(text: string, stats: Stats, language: 'en' | 'nl'): string {
+/** Output is English only (decided by Tiebe, 2026-11-27); `_language` stays for call-site compatibility. */
+export function fillPlaceholders(text: string, stats: Stats, _language: 'en' = 'en'): string {
   return text.replace(PLACEHOLDER_RE, (whole, path: string) => {
     const v = resolve(stats, path);
-    return v === undefined ? whole : format(path, v, language);
+    return v === undefined ? whole : format(path, v);
   });
 }
 
@@ -47,7 +48,6 @@ const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 
 export function validateCopy(copy: unknown, stats: Stats): { ok: boolean; errors: string[] } {
   const errors: string[] = [];
   if (!isObj(copy)) return { ok: false, errors: ['copy: must be a JSON object'] };
-  const language = copy.language === 'nl' ? 'nl' : 'en';
 
   const text = (path: string, value: unknown, limit: LimitKey): void => {
     if (typeof value !== 'string' || !value.trim()) {
@@ -59,11 +59,11 @@ export function validateCopy(copy: unknown, stats: Stats): { ok: boolean; errors
     }
     if (/\d/.test(value.replace(PLACEHOLDER_RE, ''))) errors.push(`${path}: contains a digit outside a placeholder; use a {placeholder}`);
     if (scanSecrets(value)) errors.push(`${path}: looks like it contains a secret or personal data`);
-    const filled = fillPlaceholders(value, stats, language);
+    const filled = fillPlaceholders(value, stats);
     if (filled.length > COPY_LIMITS[limit]) errors.push(`${path}: too long (${filled.length} > ${COPY_LIMITS[limit]} characters after filling)`);
   };
   if (copy.schemaVersion !== 2) errors.push('schemaVersion: must be 2');
-  if (copy.language !== 'en' && copy.language !== 'nl') errors.push('language: must be "en" or "nl"');
+  if (copy.language !== 'en') errors.push('language: must be "en"');
   if (!['professional', 'fun', 'roast'].includes(copy.vibe as string)) errors.push('vibe: must be "professional", "fun" or "roast"');
   for (const k of RETIRED) if (k in copy) errors.push(`${k}: not used since copy v2`);
 

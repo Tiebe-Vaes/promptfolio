@@ -11,7 +11,7 @@ Turns the user's local Claude Code history into four share cards (Tokens, Year i
 
 **Questions.** Every question is an AskUserQuestion: at most 4 questions per call, at most 4 options per question. This works the same in the CLI and the desktop app. Never send the user to an HTML page to choose.
 
-**Language.** Write questions, copy and messages in the language of the conversation: Dutch (`nl`) when the user writes Dutch, else English (`en`).
+**Language.** Everything is English: questions, copy (`"language": "en"`), cards and messages, whatever language the user writes in.
 
 **Opening a file, folder or URL.** `Start-Process "<target>"` in PowerShell, `cmd /c start "" "<target>"` in cmd or Git Bash on Windows, `open "<target>"` on macOS, `xdg-open "<target>"` on Linux.
 

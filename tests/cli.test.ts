@@ -49,13 +49,10 @@ test('validate CLI', () => {
   const stats = path.join(tmp, 'stats.json');
   const good = path.join(tmp, 'good.json');
   const bad = path.join(tmp, 'bad.json');
-  fs.writeFileSync(good, JSON.stringify({ schemaVersion: 1, vibe: 'fun', language: 'en',
-    persona: { className: 'Shell Warlock', specialMove: 'git commit', weakness: 'sorry', nemesis: 'errors',
-      moves: [{ name: 'a', value: '{tools.bash}', text: 'b' }, { name: 'c', value: '{tools.commits}', text: 'd' }, { name: 'e', value: '{tools.testRuns}', text: 'f' }] },
-    tokensLine: 'Tokens.', verdict: 'Fine.', receiptFooter: 'Thanks.',
-    diary: ['one', 'two', 'three'], awards: [{ title: 'a', text: 'b' }, { title: 'c', text: 'd' }, { title: 'e', text: 'f' }],
-    relationship: { status: 'Married', text: '{activity.activeDays} days together' }, captions: {} }));
-  fs.writeFileSync(bad, JSON.stringify({ schemaVersion: 1, vibe: 'fun', language: 'en', captions: { x: '12 tests' } }));
+  fs.writeFileSync(good, JSON.stringify({ schemaVersion: 2, vibe: 'fun', language: 'en', title: 'Shell Warlock',
+    lines: { tokens: 'Tokens.', year: '{activity.activeDays} days together', toolkit: 'Tools.', growth: 'Growth.' },
+    captions: { instagram: 'a', linkedin: 'b', x: 'c', discord: 'd' } }));
+  fs.writeFileSync(bad, JSON.stringify({ schemaVersion: 2, vibe: 'fun', language: 'en', captions: { x: '12 tests' } }));
   const ok = run('validate', [good, stats]);
   expect(ok.status, ok.stdout).toBe(0);
   expect(ok.stdout.trim()).toBe('OK');

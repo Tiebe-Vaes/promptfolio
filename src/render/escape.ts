@@ -9,17 +9,17 @@ export function escapeHtml(s: string): string {
 }
 
 /** Fills {placeholders} from stats, then escapes. The only way copy enters a template. */
-export function fill(text: string, stats: Stats, lang: 'en' | 'nl'): string {
-  return escapeHtml(fillPlaceholders(text, stats, lang));
+export function fill(text: string, stats: Stats, _lang: 'en' = 'en'): string {
+  return escapeHtml(fillPlaceholders(text, stats));
 }
 
 /** Locale-formatted number for templates. */
-export function num(n: number, lang: 'en' | 'nl', digits = 0): string {
-  return new Intl.NumberFormat(lang === 'nl' ? 'nl-BE' : 'en-US', { maximumFractionDigits: digits }).format(n);
+export function num(n: number, _lang: 'en' = 'en', digits = 0): string {
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: digits }).format(n);
 }
 
 /** Short form: 17.7B, 48M, 12.3K. */
-export function compact(n: number, lang: 'en' | 'nl'): string {
+export function compact(n: number, lang: 'en' = 'en'): string {
   const units: [number, string][] = [[1e9, 'B'], [1e6, 'M'], [1e3, 'K']];
   for (const [v, u] of units) if (n >= v) return `${num(n / v, lang, n / v < 100 ? 1 : 0)}${u}`;
   return num(n, lang);
