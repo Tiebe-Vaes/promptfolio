@@ -21,15 +21,17 @@ Quality over speed. There is no hard launch date, though early December (Wrapped
 ## Goals
 
 - One-command install, then one command (`/promptfolio`) to run.
-- Optional onboarding of at most 5 single-tap questions. Typing "go" at any point skips the rest and uses the defaults (professional, everything hidden, English, all formats).
-- Three outputs from one run:
-  - **A. Story:** one self-contained HTML file, tap-through like an Instagram story, with count-up numbers and a "save as PNG" button on each slide. Opens offline by double-click.
-  - **B. PNG cards:** written straight to a folder, no browser window needed: 9:16 (1080x1920), 4:5 (1080x1350), 1.91:1 (1200x627).
-  - **E. README card:** an SVG for a GitHub profile README, animated with CSS if feasible.
-- Three vibes. They share one design system (fonts, colours, slide shell, card frame). Professional has its own story sections and ends on a profile card; Fun and Roast me share the trading-card sections and differ only in tone. So v1 has two card templates (profile, trading card) and one slide shell:
-  - **Professional:** only strengths, factual, backed by numbers.
-  - **Fun:** persona, light roast.
-  - **Roast me:** honest, can sting.
+- First question: "Make it now" (defaults, no further questions) or "Personalise (1 min)" (one screen of four questions). See "Flow inside the skill" (revised 2026-11-27, v0.3).
+- Four cards with fixed content (Tokens, Year in numbers, Toolkit, Growth), all in one style the user picks: Clean, Receipt, Terminal or Trading card. Style decides the look; tone decides the words.
+- Outputs from one run:
+  - **A. Story:** one self-contained HTML file, tap-through like an Instagram story, showing the four cards in the chosen style, with a "save image" link on each card whose PNG exists. Opens offline by double-click. Always written.
+  - **B. PNG cards:** only the cards and formats the user picked: Story 9:16 (1080x1920), Square 1:1 (1080x1080), Wide 16:9 (1200x675).
+  - **E. README card:** an SVG (plus PNG) for a GitHub profile README, 3:1 (1200x400), only when the user picks that format.
+- Three tones. They change only Claude's words, never the layout:
+  - **Professional:** factual, each line states a habit with its number (why you're a good dev).
+  - **Fun:** light, laughable.
+  - **Roast me:** honest, can sting, about habits only.
+- Every card and the README card carry the repo link `github.com/Tiebe-Vaes/promptfolio` in small type at the bottom.
 - English and Dutch output.
 - Everything runs locally. The tool's own scripts upload nothing. The only data that leaves the machine is the redacted stats and sample that Claude reads in the user's own session to write the text (see Privacy).
 
@@ -41,7 +43,9 @@ Quality over speed. There is no hard launch date, though early December (Wrapped
 - A monthly archive to beat the 30-day log cleanup (strong v2 candidate, see Constraints).
 - Other agents (Codex, Cursor, Copilot).
 - A hosted website or shareable URL.
-- Receipt, festival-lineup and other extra themes.
+- Festival-lineup, nutrition-label and other styles beyond the four.
+- Choosing stats per card: each card's content is fixed (decided by Tiebe, 2026-11-27).
+- Posting on the user's behalf: the share step gives a caption and opens the platform, the user posts.
 
 ## Anti-goals (failure even if it works)
 
@@ -91,20 +95,27 @@ Split of work:
 - **Code** owns every number. Deterministic and tested.
 - **Claude** owns the words: persona, class name, strengths, diary entries, award names, captions. Claude never types a number. It uses placeholders like `{sessions}` or `{denials.top_tool}` that the render step fills from `stats.json`. A validator rejects copy with unknown placeholders, raw digits, or text too long for its slot.
 
-### Flow inside the skill
+### Flow inside the skill (revised 2026-11-27, v0.3, decided by Tiebe)
 
-1. Check Node. Locate the Claude data folder (`CLAUDE_CONFIG_DIR` or `~/.claude`).
-2. Onboarding, or "go" for the defaults:
-   1. Vibe: Professional / Fun / Roast me
-   2. Posting where: IG story / LinkedIn / X / Discord / Just me (decides which PNG sizes to write)
-   3. Project names: Hide all / Pick which / Show
-   4. Theme: Trading card (v1 has this one theme for Fun and Roast me; Professional uses a clean profile layout)
-   5. Language: English / Nederlands
-3. Run the stats script → `stats.json`.
-4. Claude reads `stats.json` plus a small, already-redacted sample (allowed session titles, top tools, top file types) and writes `copy.json`.
-5. Validate `copy.json`. On failure, Claude fixes it and reruns validation.
-6. Run the render script → output folder.
-7. Show the user where the files are and open the story.
+All questions use Claude Code's own question picker (AskUserQuestion), so the flow works the same in the CLI and the desktop app. No HTML pages for choices. AskUserQuestion allows at most 4 questions per screen and 4 options per question.
+
+1. Check Node. Locate the Claude data folder (`CLAUDE_CONFIG_DIR` or `~/.claude`). Show the privacy line.
+2. Run the stats script → `stats.json` (before the questions, so previews and descriptions use the user's real numbers). Project names are always hidden; no card shows them.
+3. Screen 1: "Make it now" or "Personalise (1 min)". Make it now = Clean, Professional, Story 9:16, all four cards.
+4. Screen 2 (Personalise only), one screen:
+   1. Style (single): Clean / Receipt / Terminal / Trading card, each with a text preview of the Tokens card using the user's numbers.
+   2. Tone (single): Professional / Fun / Roast me.
+   3. Formats (multi): Story 9:16 / Square 1:1 / Wide 16:9 / GitHub README 3:1.
+   4. Cards (multi): Tokens / Year in numbers / Toolkit / Growth, each described in one line with the user's numbers.
+   Language follows the conversation (English or Dutch). The year is the current one; only in January or February does the skill ask whether the user means last year.
+5. Claude reads `stats.json` plus the redacted sample and writes `copy.json`; validate; on failure fix and rerun.
+6. Render only the picked cards and formats, plus `story.html` → output folder. Tell the user the PNG time first (about 10 s each).
+7. Say where everything is: the folder and every file as clickable links (absolute paths).
+8. "What now?": Share / On my GitHub profile / Other format or style / Done.
+   - **Share** → which platform (Instagram / LinkedIn / X / Discord). If no picked format fits that platform, offer to render one (LinkedIn: Square or Wide; X and Discord: Wide; Instagram: Story or Square). Then show that platform's caption (filled from stats, ends with the repo link), and: X opens a prefilled post in the browser (the user attaches the image); Instagram says which PNG to send to the phone; LinkedIn and Discord open the folder. Back to "What now?".
+   - **On my GitHub profile** → render the README card if missing, show the markdown snippet. Back to "What now?".
+   - **Other format or style** → ask which, render only that. Back to "What now?".
+   - **Done** → open the folder. If `cleanupPeriodDays` is unset or below 366, offer to raise it to 400 so next year's recap is complete (edit only after a yes). End with one line holding the repo link.
 
 ### Data sources and fields used
 
@@ -125,16 +136,21 @@ Equivalents, always labelled as rough estimates with a range and a source link i
 
 A fixed list of measurable habits. Claude picks the user's top 3 and words them factually ("Reviewed and blocked 41 tool calls"), never with a verdict ("you are a great developer"). The v1 list: plans first (plan-mode share), keeps control (denials), tests (test runs), ships (commits), builds own tooling (skills, hooks, agents), researches (web searches), range (languages), consistency (streak, active weeks).
 
-### Story content
+### Card content (revised 2026-11-27, v0.3, stats picked by Tiebe)
 
-- Professional: Your year → What you built → Your stack → How you work (3 strengths) → Growth by month → Profile card.
-- Fun / Roast me: Your year → Claude's diary about you (3-5 short entries) → Awards (3-4) → Relationship status with Claude → Funny equivalents → Trading card (class, level from tokens, 4 stats, special move, weakness, nemesis error).
-- Every story ends on a card. The card is what gets posted.
+Each card is the same in every style and tone; only its look (style) and Claude's one line (tone) change. A card whose hero number is zero or missing is skipped.
+
+- **Tokens:** hero = tokens this year (`tokens.yearTotal`). Items: tokens written (`tokens.yearOutput`, with "since" when partial), favourite model and share (`tokens.favoriteModel`), energy and water estimates (`equivalents`, labelled "estimate").
+- **Year in numbers:** items: prompts (`prompts.count`), slash commands, "please" and "thanks" (`prompts.politeness`), tool calls (`activity.toolCalls`, the stats-cache count only), commits, web searches, subagents (`sessions.subagentSessions`), files edited. Total line: API value (`apiValue`, labelled estimate, shown from $1); with no API value, no total line.
+- **Toolkit:** hero = top 10 tools (`tools.top`). Items: languages (count and the top one), own setup (skills, agents, hooks), plugins.
+- **Growth:** hero = messages per month as bars plus the growth factor (`activity.growth.factor`, shown from 2x). Items: messages, busiest month, longest streak, longest gap. Skipped when there are fewer than two active months.
+- Claude writes one line per card (`lines.tokens`, `lines.year`, `lines.toolkit`, `lines.growth`), a short `title` for the user (the trading card's name, the clean style's header), and one caption per platform. Professional lines state a habit with its number, picked from `strengthCandidates`; Fun and Roast lines tease, Roast can sting.
+- Out since v0.3: test runs, corrections, denials, plan-mode share, heatmap, read-per-written ratio, diary, awards, relationship, card moves.
 
 ### Privacy and redaction
 
 - Output folder default: `./promptfolio-<year>/` in the current directory: `story.html`, `cards/*.png`, `readme-card.svg`, `stats.json`.
-- With "Hide all", project names become "Project A, B, ...", and paths, branches and session titles are dropped from everything Claude sees and everything rendered.
+- Project names become "Project A, B, ...", and paths, branches and session titles are dropped from everything Claude sees and everything rendered. Since v0.3 this is always on (the cards show no project names), so the skill no longer asks.
 - A secret scan (API key, token, email and URL-with-credentials patterns) runs on every string that goes into Claude's context or into an output file, and drops matches.
 - `stats.json` stays local. The skill says plainly that `copy.json` is written by the Claude model the user is already talking to.
 
@@ -169,6 +185,13 @@ Decided by Tiebe after three mockup rounds (`design/mockups/round-2.html`, `roun
 - **Type:** Archivo (variable width) for numbers and headings, IBM Plex Mono only on the receipt and terminal, Big Shoulders Display for the card name, Libre Franklin for body text. All OFL fonts, embedded.
 - **Never:** eyebrow labels, "01 / 07" counters (stories use an Instagram-style progress bar), gradient text, glow, middle-dot strings, one accented word in a heading, monospace for decoration, cream + terracotta, near-black + single neon accent.
 - **Generated art:** heatmap, growth line, receipt barcode and the trading-card creature are drawn from the user's own data, so every recap differs.
+
+## Visual decisions, revision for v0.3 (2026-11-27, decided by Tiebe)
+
+- **One style for all four cards.** The four v0.2 slide looks become styles: Clean (from the data artwork slide: big Archivo numbers, white, accent colour), Receipt (IBM Plex Mono slip with barcode), Terminal (dark terminal window, Plex Mono), Trading card (framed card with the generated creature, level and rarity; the four cards read as a booster pack, "1/4" to "4/4"). All four ship in v0.3.
+- **Formats:** Story 1080x1920, Square 1080x1080, Wide 1200x675, README 1200x400. The 4:5 feed size is dropped (Square covers feeds; the picker allows only 4 options). Discord has no documented image size; Wide is the assumption, checked on a real message before release.
+- **Repo link** on every card and the README card, small, in the style's own body font, never as the eye-catcher.
+- All earlier "Never" rules still hold. Monospace is allowed only in the Receipt and Terminal styles.
 
 ## Left to the builder
 
