@@ -2,15 +2,9 @@
 
 **Your year with Claude Code, as a recap you can post.** Promptfolio reads your local Claude Code logs, works out your year in numbers, and has Claude write a persona and strengths from what you actually did. Nothing leaves your machine except what Claude reads in your own session.
 
-```text
-111 days building with Claude Code
-- Tests as habit: 1,094 test runs
-- Ships: 700 commits made from sessions
-- Researches first: 652 web searches
-Most edited: TypeScript, across 11 languages
-```
+![Four Promptfolio slides: tokens read and written with a year heatmap, a receipt of the year, a trading card with a generated creature, and a growth chart](docs/images/hero.png)
 
-*A real professional recap, v0.1 text output. Story slides and share cards (Instagram story, LinkedIn, README card) arrive in v0.2.*
+*Sample output made with invented demo data.*
 
 ## Install
 
@@ -27,11 +21,16 @@ Or with the skills CLI:
 npx skills add Tiebe-Vaes/promptfolio
 ```
 
-Then type `/promptfolio`, answer five quick questions, or type **go** for the professional version.
+Then type `/promptfolio`, answer four quick questions, or type **go** for the professional version.
 
 Needs Node 18.3 or newer. Claude Code's native installer does not install Node, so check with `node -v`.
 
 ## What you get
+
+- **A tap-through story** (`story.html`, opens offline): tokens read versus written over a heatmap of your year, a receipt of your year with its API value, a terminal replay, and a closer: a trading card (Fun, Roast me) or your growth line (Professional).
+- **Share images** for where you post: Instagram story (1080x1920), feed and LinkedIn (1080x1350), X, Discord and LinkedIn links (1200x675). Rendered with the Chrome, Edge or Brave you already have.
+- **A README card** (`readme-card.svg`) for your GitHub profile.
+- **Your colours:** the accent is your top language's colour, and the card creature is generated from your own stats.
 
 | Vibe | What it writes |
 |---|---|
