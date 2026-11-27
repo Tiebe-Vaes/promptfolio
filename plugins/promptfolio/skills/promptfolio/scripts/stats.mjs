@@ -511,15 +511,18 @@ var add = (a, b) => ({
   cacheRead: a.cacheRead + b.cacheRead,
   cacheCreation: a.cacheCreation + b.cacheCreation
 });
-function yearUsageByModel(cache, transcripts, year, fromCache) {
+function yearUsageByModel(cache, transcripts, year, tz, fromCache) {
   const usage = {};
-  const cacheCovers = cache.firstSessionDate?.startsWith(String(year)) ?? false;
+  const first = cache.firstSessionDate && !Number.isNaN(Date.parse(cache.firstSessionDate)) ? localDate(cache.firstSessionDate, tz) : null;
+  const cacheCovers = first?.startsWith(String(year)) ?? false;
+  let from = null;
   if (cacheCovers) for (const [m, u] of Object.entries(cache.modelUsage)) usage[m] = { ...u };
   for (const [date, models] of Object.entries(transcripts.dailyUsage)) {
     if (!date.startsWith(String(year)) || fromCache(date)) continue;
+    if (!cacheCovers && (from === null || date < from)) from = date;
     for (const [m, u] of Object.entries(models)) usage[m] = usage[m] ? add(usage[m], u) : { ...u };
   }
-  return Object.keys(usage).length > 0 ? usage : null;
+  return Object.keys(usage).length > 0 ? { usage, from: cacheCovers ? null : from } : null;
 }
 
 // src/stats/pricing.ts
@@ -541,8 +544,8 @@ var PRICES = {
   "claude-haiku-4-5": std(1, 5)
 };
 function priceFor(model) {
-  const key = Object.keys(PRICES).filter((k) => model === k || model.startsWith(`${k}-`)).sort((a, b) => b.length - a.length)[0];
-  return key ? PRICES[key] : void 0;
+  const base = model.replace(/-\d{8}$/, "");
+  return Object.prototype.hasOwnProperty.call(PRICES, base) ? PRICES[base] : void 0;
 }
 function apiValue(usage) {
   const entries2 = Object.entries(usage).filter(([m, u]) => m !== "<synthetic>" && u.input + u.output + u.cacheRead + u.cacheCreation > 0);
@@ -642,8 +645,10 @@ async function buildStats(opts) {
     const lang = LANGUAGES[ext];
     if (lang) languageCounts[lang] = (languageCounts[lang] ?? 0) + n;
   }
-  const usage = yearUsageByModel(cache, transcripts, year, fromCache);
+  const yearUsage = yearUsageByModel(cache, transcripts, year, tz, fromCache);
+  const usage = yearUsage?.usage ?? null;
   const yearOutput = usage ? Object.values(usage).reduce((a, u) => a + u.output, 0) || null : null;
+  const windowRead = usage ? Object.values(usage).reduce((a, u) => a + u.input + u.output + u.cacheRead + u.cacheCreation, 0) : 0;
   const byLanguage = Object.entries(languageCounts).sort(([a, x], [b2, y2]) => y2 - x || a.localeCompare(b2)).map(([language, count]) => ({ language, count }));
   const modeTotal = Object.values(transcripts.permissionModes).reduce((a, b) => a + b, 0);
   const ls = cache.longestSession;
@@ -681,6 +686,7 @@ async function buildStats(opts) {
       byModel,
       detailed: transcripts.tokens,
       yearOutput,
+      usageFrom: yearUsage?.from ?? null,
       readPerWritten: null,
       favoriteModel: favoriteModel(byModel)
     },
@@ -729,7 +735,8 @@ async function buildStats(opts) {
     equivalents: computeEquivalents(history.prompts),
     apiValue: usage ? apiValue(usage) : null
   };
-  stats.tokens.readPerWritten = yearOutput && stats.tokens.yearTotal ? Math.round(stats.tokens.yearTotal / yearOutput) : null;
+  const readBase = yearUsage?.from ? windowRead : stats.tokens.yearTotal;
+  stats.tokens.readPerWritten = yearOutput && readBase ? Math.round(readBase / yearOutput) : null;
   stats.strengthCandidates = strengthCandidates(stats);
   return stats;
 }

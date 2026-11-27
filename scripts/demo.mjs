@@ -46,7 +46,7 @@ function demoStats(base) {
       byMonth, daily: d,
       growth: { first: { month: first.month, messages: first.messages }, peak: { month: peak.month, messages: peak.messages }, factor: Math.round(peak.messages / first.messages) },
     },
-    tokens: { ...base.tokens, yearTotal, yearOutput, readPerWritten: Math.round(yearTotal / yearOutput), byModel: { 'claude-opus-5-5': 7_900_000_000, 'claude-sonnet-5-5': 1_512_000_000 }, favoriteModel: { model: 'claude-opus-5-5', share: 0.84 } },
+    tokens: { ...base.tokens, yearTotal, yearOutput, usageFrom: null, readPerWritten: Math.round(yearTotal / yearOutput), byModel: { 'claude-opus-5-5': 7_900_000_000, 'claude-sonnet-5-5': 1_512_000_000 }, favoriteModel: { model: 'claude-opus-5-5', share: 0.84 } },
     prompts: { ...base.prompts, count: 1_204, politeness: 61, corrections: 87 },
     tools: { ...base.tools, calls: 18_406, bash: 7_204, testRuns: 862, commits: 455, webSearches: 318, mcpCalls: 2_210,
       top: [{ name: 'Bash', count: 7204 }, { name: 'Edit', count: 3120 }, { name: 'Read', count: 2804 }, { name: 'mcp:Claude_Browser', count: 1350 }] },

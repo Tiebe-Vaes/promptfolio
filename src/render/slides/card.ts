@@ -47,7 +47,7 @@ export function render(ctx: SlideCtx): SlideOut {
   const lv = level(stats.tokens.yearTotal);
   const rare = s.rarity[rarity(stats)];
   const moves = p.moves.map(m => `<div class="move"><b>${fill(m.name, stats, lang)}</b><span>${fill(m.value, stats, lang)}</span><p>${fill(m.text, stats, lang)}</p></div>`).join('');
-  const typeLine = s.classLine(escapeHtml(stats.files.topLanguage ?? 'Polyglot'), String(stats.activity.sessions), stats.year);
+  const typeLine = s.classLine(escapeHtml(stats.files.topLanguage ?? 'Polyglot'), stats.activity.sessions, String(stats.activity.sessions), stats.year);
 
   const cardHtml = `<div class="card"><div class="face">
     <div class="top"><div class="name">${fill(p.className, stats, lang)}</div><div class="lv">${s.level} <b>${lv}</b></div></div>

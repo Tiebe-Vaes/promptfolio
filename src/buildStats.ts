@@ -97,8 +97,11 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
     if (lang) languageCounts[lang] = (languageCounts[lang] ?? 0) + n;
   }
 
-  const usage = yearUsageByModel(cache, transcripts, year, fromCache);
+  const yearUsage = yearUsageByModel(cache, transcripts, year, tz, fromCache);
+  const usage = yearUsage?.usage ?? null;
   const yearOutput = usage ? Object.values(usage).reduce((a, u) => a + u.output, 0) || null : null;
+  // Tokens read over the same window as the written tokens, so the ratio compares like with like.
+  const windowRead = usage ? Object.values(usage).reduce((a, u) => a + u.input + u.output + u.cacheRead + u.cacheCreation, 0) : 0;
   const byLanguage = Object.entries(languageCounts).sort(([a, x], [b2, y2]) => y2 - x || a.localeCompare(b2)).map(([language, count]) => ({ language, count }));
 
   const modeTotal = Object.values(transcripts.permissionModes).reduce((a, b) => a + b, 0);
@@ -138,6 +141,7 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
       byModel,
       detailed: transcripts.tokens,
       yearOutput,
+      usageFrom: yearUsage?.from ?? null,
       readPerWritten: null,
       favoriteModel: favoriteModel(byModel),
     },
@@ -186,7 +190,8 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
     equivalents: computeEquivalents(history.prompts),
     apiValue: usage ? apiValue(usage) : null,
   };
-  stats.tokens.readPerWritten = yearOutput && stats.tokens.yearTotal ? Math.round(stats.tokens.yearTotal / yearOutput) : null;
+  const readBase = yearUsage?.from ? windowRead : stats.tokens.yearTotal;
+  stats.tokens.readPerWritten = yearOutput && readBase ? Math.round(readBase / yearOutput) : null;
   stats.strengthCandidates = strengthCandidates(stats);
   return stats;
 }

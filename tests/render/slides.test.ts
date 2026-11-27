@@ -73,3 +73,24 @@ test('terminal: long tool names are shortened, MCP tools get a readable name', (
   expect(html).toContain('>Claude Browser<');
   expect(html).not.toContain('mcp:');
 });
+
+test('plurals read right', () => {
+  const one = merge(stats, { activity: { activeDays: 1, longestStreakDays: 1, sessions: 1 } });
+  const term = terminal.render(ctx(one, funCopy))!.html;
+  expect(term).toContain('reading 1 day of logs');
+  expect(term).toContain('>1 day<');
+  expect(tokens.render(ctx(one, funCopy))!.html).toContain('1 active day,');
+});
+
+test('heatmap starts its labels at the first active month', () => {
+  const html = tokens.render(ctx(merge(stats, { activity: { daily: [{ date: '2026-03-01', messages: 4 }, { date: '2026-05-20', messages: 9 }] } }), funCopy))!.html;
+  const labels = [...html.matchAll(/<span style="left:\d+px">([^<]+)<\/span>/g)].map(m => m[1]);
+  expect(labels[0]).toBe('Mar');
+  expect(labels).not.toContain('Feb');
+});
+
+test('written tokens say since when they only cover part of the year', () => {
+  expect(tokens.render(ctx(stats, funCopy))!.html).toMatch(/tokens written since Nov 20/);
+  const priced = merge(stats, { apiValue: { usd: 50, models: ['claude-opus-5-5'], skippedModels: [], pricesAsOf: '2026-11-03' } });
+  expect(receipt.render(ctx(priced, funCopy))!.html).toMatch(/since Nov 20/);
+});

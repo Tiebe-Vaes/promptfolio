@@ -28,7 +28,7 @@ export function render(ctx: SlideCtx): SlideOut {
   ].join('');
   const api = stats.apiValue && stats.apiValue.usd >= 1
     ? line(s.apiValue, `$${num(Math.round(stats.apiValue.usd), lang)}`, ' tot') + line(s.youPaid, s.aPlan)
-      + `<div class="note">${s.apiNote}${stats.apiValue.skippedModels.length ? `, ${s.excludes(stats.apiValue.skippedModels.length)}` : ''}</div>`
+      + `<div class="note">${s.apiNote}${stats.tokens.usageFrom ? `, ${s.since(shortDate(stats.tokens.usageFrom, lang))}` : ''}${stats.apiValue.skippedModels.length ? `, ${s.excludes(stats.apiValue.skippedModels.length)}` : ''}</div>`
     : '';
   const footer = copy.vibe !== 'professional' && copy.receiptFooter ? fill(copy.receiptFooter, stats, lang) : s.receiptThanks;
 

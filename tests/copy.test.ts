@@ -127,7 +127,9 @@ test('fun needs 3 moves, a receipt footer, a verdict and a tokens line', () => {
 });
 
 test('professional needs growthLine when growth exists', () => {
-  expect(validateCopy(withPath(proCopy, 'growthLine', undefined), stats).ok).toBe(false);
+  const grown = merge(stats, { activity: { growth: { first: { month: '2026-03', messages: 10 }, peak: { month: '2026-11', messages: 100 }, factor: 10 } } });
+  expect(validateCopy(withPath(proCopy, 'growthLine', undefined), grown).ok).toBe(false);
+  expect(validateCopy(withPath(proCopy, 'growthLine', undefined), stats).ok).toBe(true); // factor 1: no growth slide
   const noGrowth = merge(stats, { activity: { growth: null } });
   expect(validateCopy(withPath(proCopy, 'growthLine', undefined), noGrowth).ok).toBe(true);
 });
@@ -141,4 +143,16 @@ test('limits match card widths', () => {
   expect(COPY_LIMITS.className).toBe(22);
   expect(COPY_LIMITS.moveName).toBe(22);
   expect(COPY_LIMITS.growthLine).toBe(40);
+});
+
+test('light users need only as many strengths as they have candidates', () => {
+  const one = merge(stats, { strengthCandidates: [{ id: 'consistency', value: 2, placeholder: 'activity.longestStreakDays', score: 0.3 }] });
+  const copy = withPath(proCopy, 'profile.strengths', [{ id: 'consistency', text: 'Streak of {activity.longestStreakDays} days' }]);
+  expect(validateCopy(copy, one)).toEqual({ ok: true, errors: [] });
+  expect(validateCopy(withPath(proCopy, 'profile.strengths', []), one).ok).toBe(false);
+});
+
+test('a card move must not be zero', () => {
+  const zero = merge(stats, { tools: { commits: 0 } });
+  expect(validateCopy(withPath(funCopy, 'persona.moves.2.value', '{tools.commits}'), zero).errors.join()).toMatch(/persona.moves.2.value/);
 });

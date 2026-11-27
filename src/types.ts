@@ -101,6 +101,8 @@ export interface Stats {
     detailed: TranscriptStats['tokens'];
     /** Tokens Claude wrote this year; null when no source covers the year. */
     yearOutput: number | null;
+    /** First date yearOutput and apiValue cover when they only cover part of the year; null = whole year. */
+    usageFrom: string | null;
     /** Tokens read (all, incl. cache) per token written. */
     readPerWritten: number | null;
     /** Model with the most year tokens and its share (0..1). */

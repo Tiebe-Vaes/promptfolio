@@ -28,3 +28,9 @@ test('synthetic and empty usage give null', () => {
   expect(apiValue({})).toBeNull();
   expect(apiValue({ '<synthetic>': split(0, 0) })).toBeNull();
 });
+
+test('unknown versions of a known family are not guessed', () => {
+  expect(priceFor('claude-opus-5-7')).toBeUndefined();
+  expect(priceFor('claude-fable-5-3')).toBeUndefined();
+  expect(priceFor('claude-opus-5-5')).toBe(PRICES['claude-opus-5-5']);
+});

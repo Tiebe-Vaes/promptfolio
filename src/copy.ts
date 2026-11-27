@@ -97,7 +97,9 @@ export function validateCopy(copy: unknown, stats: Stats): { ok: boolean; errors
       text('profile.headline', profile.headline, 'headline');
       const candidates = new Set(stats.strengthCandidates.map(c => c.id));
       const seen = new Set<string>();
-      list('profile.strengths', profile.strengths, 3, 3).forEach((s, i) => {
+      // Light users may have fewer than three measurable habits; ask for as many as exist, up to three.
+      const need = Math.min(3, candidates.size);
+      list('profile.strengths', profile.strengths, need, need).forEach((s, i) => {
         const id = isObj(s) ? s.id : undefined;
         if (typeof id !== 'string' || !candidates.has(id as any)) errors.push(`profile.strengths.${i}.id: must be one of the strength candidates in stats`);
         else if (seen.has(id)) errors.push(`profile.strengths.${i}.id: duplicate strength`);
@@ -109,7 +111,8 @@ export function validateCopy(copy: unknown, stats: Stats): { ok: boolean; errors
 
   text('tokensLine', copy.tokensLine, 'tokensLine');
   text('verdict', copy.verdict, 'verdict');
-  if (copy.vibe === 'professional' && stats.activity.growth) text('growthLine', copy.growthLine, 'growthLine');
+  // Same condition as the growth slide: it only shows from a doubling.
+  if (copy.vibe === 'professional' && stats.activity.growth && stats.activity.growth.factor >= 2) text('growthLine', copy.growthLine, 'growthLine');
 
   if (copy.vibe === 'fun' || copy.vibe === 'roast') {
     text('receiptFooter', copy.receiptFooter, 'receiptFooter');
@@ -125,7 +128,8 @@ export function validateCopy(copy: unknown, stats: Stats): { ok: boolean; errors
         text(`persona.moves.${i}.name`, m.name, 'moveName');
         text(`persona.moves.${i}.text`, m.text, 'moveText');
         const value = typeof m.value === 'string' ? m.value.match(/^\{([A-Za-z0-9_.]+)\}$/) : null;
-        if (!value || typeof resolve(stats, value[1]) !== 'number') errors.push(`persona.moves.${i}.value: must be exactly one {placeholder} that resolves to a number`);
+        const v = value ? resolve(stats, value[1]) : undefined;
+        if (typeof v !== 'number' || v <= 0) errors.push(`persona.moves.${i}.value: must be exactly one {placeholder} that resolves to a number above zero`);
       });
     }
     list('diary', copy.diary, 3, 5).forEach((d, i) => text(`diary.${i}`, d, 'diary'));

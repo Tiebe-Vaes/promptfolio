@@ -36,7 +36,9 @@ test('growth null with one month', () => expect(growth([{ month: '2026-03', mess
 
 test('yearOutput uses transcripts only when the cache history started before the year', () => {
   expect(s.tokens.yearOutput).toBe(200);
-  expect(s.tokens.readPerWritten).toBe(Math.round((1500 + 2000 + 1215 + 58) / 200));
+  // Written tokens only cover the transcript window, so the ratio uses that window too.
+  expect(s.tokens.usageFrom).toBe('2026-11-20');
+  expect(s.tokens.readPerWritten).toBe(Math.round((1215 + 58) / 200));
 });
 
 test('yearOutput uses modelUsage when first session is this year', async () => {
@@ -69,4 +71,15 @@ test('empty home has no extras', async () => {
   expect(e.tokens.readPerWritten).toBeNull();
   expect(e.apiValue).toBeNull();
   expect(e.files.topLanguage).toBeNull();
+});
+
+test('usageFrom is null when the cache covers the whole year', async () => {
+  const b = await buildStats({ claudeDir: patchedHome({ firstSessionDate: '2026-02-01T10:00:00Z' }), year: 2026, tz: 'Europe/Brussels', now: new Date('2026-11-27') });
+  expect(b.tokens.usageFrom).toBeNull();
+});
+
+test('year cutoff for the first session uses local time', async () => {
+  const b = await buildStats({ claudeDir: patchedHome({ firstSessionDate: '2025-12-31T23:30:00Z' }), year: 2026, tz: 'Europe/Brussels', now: new Date('2026-11-27') });
+  expect(b.tokens.usageFrom).toBeNull();
+  expect(b.tokens.yearOutput).toBe(500 + 200);
 });

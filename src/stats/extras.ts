@@ -1,5 +1,6 @@
 import type { StatsCacheData } from '../sources/statsCache.js';
 import type { TranscriptStats } from '../sources/transcripts.js';
+import { localDate } from '../time.js';
 import type { Stats, TokenSplit } from '../types.js';
 
 /** First month of the year versus the busiest month. Null with fewer than two months. */
@@ -24,14 +25,18 @@ const add = (a: TokenSplit, b: TokenSplit): TokenSplit => ({
  * so it only counts when the user's first session is in this year; transcripts add the days after its cutoff.
  */
 export function yearUsageByModel(
-  cache: StatsCacheData, transcripts: TranscriptStats, year: number, fromCache: (date: string) => boolean,
-): Record<string, TokenSplit> | null {
+  cache: StatsCacheData, transcripts: TranscriptStats, year: number, tz: string, fromCache: (date: string) => boolean,
+): { usage: Record<string, TokenSplit>; from: string | null } | null {
   const usage: Record<string, TokenSplit> = {};
-  const cacheCovers = cache.firstSessionDate?.startsWith(String(year)) ?? false;
+  const first = cache.firstSessionDate && !Number.isNaN(Date.parse(cache.firstSessionDate)) ? localDate(cache.firstSessionDate, tz) : null;
+  const cacheCovers = first?.startsWith(String(year)) ?? false;
+  let from: string | null = null;
   if (cacheCovers) for (const [m, u] of Object.entries(cache.modelUsage)) usage[m] = { ...u };
   for (const [date, models] of Object.entries(transcripts.dailyUsage)) {
     if (!date.startsWith(String(year)) || fromCache(date)) continue;
+    if (!cacheCovers && (from === null || date < from)) from = date;
     for (const [m, u] of Object.entries(models)) usage[m] = usage[m] ? add(usage[m], u) : { ...u };
   }
-  return Object.keys(usage).length > 0 ? usage : null;
+  // from = first date counted when the totals only cover part of the year (null = the whole year).
+  return Object.keys(usage).length > 0 ? { usage, from: cacheCovers ? null : from } : null;
 }

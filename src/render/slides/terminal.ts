@@ -22,11 +22,11 @@ export function render(ctx: SlideCtx): SlideOut {
   const inner = `<div class="win">
     <div class="dots"><i></i><i></i><i></i></div>
     <div class="p">~ <b>$</b> /promptfolio --year ${stats.year}</div><br>
-    <div class="k">${s.reading(num(stats.activity.activeDays, lang))}</div>
+    <div class="k">${s.reading(stats.activity.activeDays, num(stats.activity.activeDays, lang))}</div>
     <div class="k">${s.done}</div><br>
     ${row(s.sessions.toLowerCase(), num(stats.activity.sessions, lang))}
     ${stats.activity.busiestDay ? row(s.busiestDay, `${shortDate(stats.activity.busiestDay.date, lang)} (${num(stats.activity.busiestDay.messages, lang)} ${s.msgs})`) : ''}
-    ${row(s.streak, s.days(num(stats.activity.longestStreakDays, lang)))}
+    ${row(s.streak, s.days(stats.activity.longestStreakDays, num(stats.activity.longestStreakDays, lang)))}
     ${stats.files.topLanguage ? row(s.topLanguage, escapeHtml(stats.files.topLanguage), 'hl') : ''}
     ${tools ? `<br><div class="k">${s.topTools}</div>${tools}` : ''}
     ${copy.verdict ? `<br><div class="k">${s.verdict}</div><div class="v verdict">${fill(copy.verdict, stats, lang)}</div>` : ''}

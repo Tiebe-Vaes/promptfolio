@@ -199,7 +199,8 @@ function validateCopy(copy, stats) {
       text("profile.headline", profile.headline, "headline");
       const candidates = new Set(stats.strengthCandidates.map((c) => c.id));
       const seen = /* @__PURE__ */ new Set();
-      list("profile.strengths", profile.strengths, 3, 3).forEach((s, i) => {
+      const need = Math.min(3, candidates.size);
+      list("profile.strengths", profile.strengths, need, need).forEach((s, i) => {
         const id = isObj(s) ? s.id : void 0;
         if (typeof id !== "string" || !candidates.has(id)) errors.push(`profile.strengths.${i}.id: must be one of the strength candidates in stats`);
         else if (seen.has(id)) errors.push(`profile.strengths.${i}.id: duplicate strength`);
@@ -210,7 +211,7 @@ function validateCopy(copy, stats) {
   }
   text("tokensLine", copy.tokensLine, "tokensLine");
   text("verdict", copy.verdict, "verdict");
-  if (copy.vibe === "professional" && stats.activity.growth) text("growthLine", copy.growthLine, "growthLine");
+  if (copy.vibe === "professional" && stats.activity.growth && stats.activity.growth.factor >= 2) text("growthLine", copy.growthLine, "growthLine");
   if (copy.vibe === "fun" || copy.vibe === "roast") {
     text("receiptFooter", copy.receiptFooter, "receiptFooter");
     const p = copy.persona;
@@ -225,7 +226,8 @@ function validateCopy(copy, stats) {
         text(`persona.moves.${i}.name`, m.name, "moveName");
         text(`persona.moves.${i}.text`, m.text, "moveText");
         const value = typeof m.value === "string" ? m.value.match(/^\{([A-Za-z0-9_.]+)\}$/) : null;
-        if (!value || typeof resolve(stats, value[1]) !== "number") errors.push(`persona.moves.${i}.value: must be exactly one {placeholder} that resolves to a number`);
+        const v = value ? resolve(stats, value[1]) : void 0;
+        if (typeof v !== "number" || v <= 0) errors.push(`persona.moves.${i}.value: must be exactly one {placeholder} that resolves to a number above zero`);
       });
     }
     list("diary", copy.diary, 3, 5).forEach((d, i) => text(`diary.${i}`, d, "diary"));
@@ -319,7 +321,7 @@ var STRINGS = {
   en: {
     tokensRead: "tokens read",
     tokensWritten: "tokens written",
-    activeDays: (n, from, to) => `${n} active days, ${from} to ${to}`,
+    activeDays: (n, f, from, to) => `${f} active day${n === 1 ? "" : "s"}, ${from} to ${to}`,
     sessions: "Sessions",
     messages: "Messages",
     bash: "Bash commands",
@@ -336,18 +338,19 @@ var STRINGS = {
     receiptYear: (y) => `Claude Code, year ${y}`,
     busiestDay: "busiest day",
     streak: "longest streak",
-    days: (n) => `${n} days`,
+    days: (n, f) => `${f} day${n === 1 ? "" : "s"}`,
     topLanguage: "top language",
     topTools: "top tools",
     verdict: "verdict",
-    reading: (n) => `reading ${n} days of logs...`,
+    reading: (n, f) => `reading ${f} day${n === 1 ? "" : "s"} of logs...`,
     done: "done",
     msgs: "msgs",
     level: "LV",
     weakness: "Weakness",
     nemesis: "Nemesis",
     rarity: { common: "Common", rare: "Rare", legendary: "Legendary" },
-    classLine: (lang, n, y) => `${lang} class. Summoned ${n} times in ${y}.`,
+    classLine: (lang, n, f, y) => `${lang} class. Summoned ${f} time${n === 1 ? "" : "s"} in ${y}.`,
+    since: (d) => `since ${d}`,
     messagesPerMonth: "messages per month",
     save: "Save image",
     screenshot: "Screenshot this slide to share it",
@@ -357,7 +360,7 @@ var STRINGS = {
   nl: {
     tokensRead: "tokens gelezen",
     tokensWritten: "tokens geschreven",
-    activeDays: (n, from, to) => `${n} actieve dagen, ${from} tot ${to}`,
+    activeDays: (n, f, from, to) => `${f} actieve dag${n === 1 ? "" : "en"}, ${from} tot ${to}`,
     sessions: "Sessies",
     messages: "Berichten",
     bash: "Bash-commando's",
@@ -374,18 +377,19 @@ var STRINGS = {
     receiptYear: (y) => `Claude Code, jaar ${y}`,
     busiestDay: "drukste dag",
     streak: "langste reeks",
-    days: (n) => `${n} dagen`,
+    days: (n, f) => `${f} dag${n === 1 ? "" : "en"}`,
     topLanguage: "toptaal",
     topTools: "top tools",
     verdict: "oordeel",
-    reading: (n) => `${n} dagen logs lezen...`,
+    reading: (n, f) => `${f} dag${n === 1 ? "" : "en"} logs lezen...`,
     done: "klaar",
     msgs: "ber.",
     level: "LV",
     weakness: "Zwakte",
     nemesis: "Aartsvijand",
     rarity: { common: "Gewoon", rare: "Zeldzaam", legendary: "Legendarisch" },
-    classLine: (lang, n, y) => `${lang}-klasse. ${n} keer opgeroepen in ${y}.`,
+    classLine: (lang, n, f, y) => `${lang}-klasse. ${f} keer opgeroepen in ${y}.`,
+    since: (d) => `sinds ${d}`,
     messagesPerMonth: "berichten per maand",
     save: "Afbeelding opslaan",
     screenshot: "Maak een screenshot van deze slide om te delen",
@@ -510,7 +514,7 @@ function render(ctx) {
   const lv = level(stats.tokens.yearTotal);
   const rare = s.rarity[rarity(stats)];
   const moves = p.moves.map((m) => `<div class="move"><b>${fill(m.name, stats, lang)}</b><span>${fill(m.value, stats, lang)}</span><p>${fill(m.text, stats, lang)}</p></div>`).join("");
-  const typeLine = s.classLine(escapeHtml(stats.files.topLanguage ?? "Polyglot"), String(stats.activity.sessions), stats.year);
+  const typeLine = s.classLine(escapeHtml(stats.files.topLanguage ?? "Polyglot"), stats.activity.sessions, String(stats.activity.sessions), stats.year);
   const cardHtml = `<div class="card"><div class="face">
     <div class="top"><div class="name">${fill(p.className, stats, lang)}</div><div class="lv">${s.level} <b>${lv}</b></div></div>
     <div class="window">${sprite(stats, ctx.theme.accent, ctx.theme.deep)}</div>
@@ -633,7 +637,7 @@ function render3(ctx) {
     stats.tokens.yearTotal ? line(s.tokensRead.replace(/^./, (c) => c.toUpperCase()), compact(stats.tokens.yearTotal, lang)) : "",
     stats.tokens.yearOutput ? line(s.tokensWritten.replace(/^./, (c) => c.toUpperCase()), compact(stats.tokens.yearOutput, lang)) : ""
   ].join("");
-  const api = stats.apiValue && stats.apiValue.usd >= 1 ? line(s.apiValue, `$${num(Math.round(stats.apiValue.usd), lang)}`, " tot") + line(s.youPaid, s.aPlan) + `<div class="note">${s.apiNote}${stats.apiValue.skippedModels.length ? `, ${s.excludes(stats.apiValue.skippedModels.length)}` : ""}</div>` : "";
+  const api = stats.apiValue && stats.apiValue.usd >= 1 ? line(s.apiValue, `$${num(Math.round(stats.apiValue.usd), lang)}`, " tot") + line(s.youPaid, s.aPlan) + `<div class="note">${s.apiNote}${stats.tokens.usageFrom ? `, ${s.since(shortDate(stats.tokens.usageFrom, lang))}` : ""}${stats.apiValue.skippedModels.length ? `, ${s.excludes(stats.apiValue.skippedModels.length)}` : ""}</div>` : "";
   const footer = copy.vibe !== "professional" && copy.receiptFooter ? fill(copy.receiptFooter, stats, lang) : s.receiptThanks;
   const first = toMs(daily[0].date);
   const days = Math.round((toMs(daily.at(-1).date) - first) / DAY) + 1;
@@ -690,11 +694,11 @@ function render4(ctx) {
   const inner = `<div class="win">
     <div class="dots"><i></i><i></i><i></i></div>
     <div class="p">~ <b>$</b> /promptfolio --year ${stats.year}</div><br>
-    <div class="k">${s.reading(num(stats.activity.activeDays, lang))}</div>
+    <div class="k">${s.reading(stats.activity.activeDays, num(stats.activity.activeDays, lang))}</div>
     <div class="k">${s.done}</div><br>
     ${row(s.sessions.toLowerCase(), num(stats.activity.sessions, lang))}
     ${stats.activity.busiestDay ? row(s.busiestDay, `${shortDate(stats.activity.busiestDay.date, lang)} (${num(stats.activity.busiestDay.messages, lang)} ${s.msgs})`) : ""}
-    ${row(s.streak, s.days(num(stats.activity.longestStreakDays, lang)))}
+    ${row(s.streak, s.days(stats.activity.longestStreakDays, num(stats.activity.longestStreakDays, lang)))}
     ${stats.files.topLanguage ? row(s.topLanguage, escapeHtml(stats.files.topLanguage), "hl") : ""}
     ${tools ? `<br><div class="k">${s.topTools}</div>${tools}` : ""}
     ${copy.verdict ? `<br><div class="k">${s.verdict}</div><div class="v verdict">${fill(copy.verdict, stats, lang)}</div>` : ""}
@@ -746,7 +750,9 @@ function render5(ctx) {
       const pct = v ? Math.round(18 + 82 * Math.sqrt(v / max)) : 0;
       cells.push(`<i class="cell" style="grid-column:${w + 1};grid-row:${d + 1}${v ? `;background:color-mix(in oklab, var(--accent) ${pct}%, #EEF1F5)` : ""}"></i>`);
       const left = w * (cell + 5);
-      if ((date.endsWith("-01") || w === 0 && d === 0) && left - lastLabel >= 60) {
+      const isFirst = date === daily[0].date;
+      const monthStart = date.endsWith("-01") && date > daily[0].date;
+      if ((isFirst || monthStart) && left - lastLabel >= 60) {
         months.push(`<span style="left:${left}px">${shortMonth(date.slice(0, 7), lang)}</span>`);
         lastLabel = left;
       }
@@ -757,12 +763,12 @@ function render5(ctx) {
   const inner = `
     <div class="copy">
       <div class="num">${read}</div><div class="unit">${s.tokensRead}</div>
-      ${written ? `<div class="num accent">${written}</div><div class="unit">${s.tokensWritten}</div>` : ""}
+      ${written ? `<div class="num accent">${written}</div><div class="unit">${s.tokensWritten}${stats.tokens.usageFrom ? ` ${s.since(shortDate(stats.tokens.usageFrom, lang))}` : ""}</div>` : ""}
       ${ctx.copy.tokensLine ? `<p class="say">${fill(ctx.copy.tokensLine, stats, lang)}</p>` : ""}
     </div>
     <div class="heat" style="grid-template-columns:repeat(${weeks},${cell}px);grid-template-rows:repeat(7,${cell}px)">${cells.join("")}</div>
     <div class="months">${months.join("")}</div>
-    <p class="foot">${s.activeDays(num(stats.activity.activeDays, lang), shortDate(daily[0].date, lang), shortDate(daily.at(-1).date, lang))}</p>`;
+    <p class="foot">${s.activeDays(stats.activity.activeDays, num(stats.activity.activeDays, lang), shortDate(daily[0].date, lang), shortDate(daily.at(-1).date, lang))}</p>`;
   return { css: CSS5, html: frame(ctx, "s-tok", inner) };
 }
 var CSS5 = `

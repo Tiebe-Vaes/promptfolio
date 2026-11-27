@@ -32,7 +32,10 @@ export function render(ctx: SlideCtx): SlideOut {
       cells.push(`<i class="cell" style="grid-column:${w + 1};grid-row:${d + 1}${v ? `;background:color-mix(in oklab, var(--accent) ${pct}%, #EEF1F5)` : ''}"></i>`);
       const left = w * (cell + 5);
       // Label each month at its first day; skip a label that would sit on top of the previous one.
-      if ((date.endsWith('-01') || (w === 0 && d === 0)) && left - lastLabel >= 60) {
+      // First label at the first active day; then one at each month start that has room.
+      const isFirst = date === daily[0].date;
+      const monthStart = date.endsWith('-01') && date > daily[0].date;
+      if ((isFirst || monthStart) && left - lastLabel >= 60) {
         months.push(`<span style="left:${left}px">${shortMonth(date.slice(0, 7), lang)}</span>`);
         lastLabel = left;
       }
@@ -44,12 +47,12 @@ export function render(ctx: SlideCtx): SlideOut {
   const inner = `
     <div class="copy">
       <div class="num">${read}</div><div class="unit">${s.tokensRead}</div>
-      ${written ? `<div class="num accent">${written}</div><div class="unit">${s.tokensWritten}</div>` : ''}
+      ${written ? `<div class="num accent">${written}</div><div class="unit">${s.tokensWritten}${stats.tokens.usageFrom ? ` ${s.since(shortDate(stats.tokens.usageFrom, lang))}` : ''}</div>` : ''}
       ${ctx.copy.tokensLine ? `<p class="say">${fill(ctx.copy.tokensLine, stats, lang)}</p>` : ''}
     </div>
     <div class="heat" style="grid-template-columns:repeat(${weeks},${cell}px);grid-template-rows:repeat(7,${cell}px)">${cells.join('')}</div>
     <div class="months">${months.join('')}</div>
-    <p class="foot">${s.activeDays(num(stats.activity.activeDays, lang), shortDate(daily[0].date, lang), shortDate(daily.at(-1)!.date, lang))}</p>`;
+    <p class="foot">${s.activeDays(stats.activity.activeDays, num(stats.activity.activeDays, lang), shortDate(daily[0].date, lang), shortDate(daily.at(-1)!.date, lang))}</p>`;
   return { css: CSS, html: frame(ctx, 's-tok', inner) };
 }
 

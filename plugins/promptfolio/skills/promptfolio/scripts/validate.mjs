@@ -112,7 +112,8 @@ function validateCopy(copy, stats) {
       text("profile.headline", profile.headline, "headline");
       const candidates = new Set(stats.strengthCandidates.map((c) => c.id));
       const seen = /* @__PURE__ */ new Set();
-      list("profile.strengths", profile.strengths, 3, 3).forEach((s, i) => {
+      const need = Math.min(3, candidates.size);
+      list("profile.strengths", profile.strengths, need, need).forEach((s, i) => {
         const id = isObj(s) ? s.id : void 0;
         if (typeof id !== "string" || !candidates.has(id)) errors.push(`profile.strengths.${i}.id: must be one of the strength candidates in stats`);
         else if (seen.has(id)) errors.push(`profile.strengths.${i}.id: duplicate strength`);
@@ -123,7 +124,7 @@ function validateCopy(copy, stats) {
   }
   text("tokensLine", copy.tokensLine, "tokensLine");
   text("verdict", copy.verdict, "verdict");
-  if (copy.vibe === "professional" && stats.activity.growth) text("growthLine", copy.growthLine, "growthLine");
+  if (copy.vibe === "professional" && stats.activity.growth && stats.activity.growth.factor >= 2) text("growthLine", copy.growthLine, "growthLine");
   if (copy.vibe === "fun" || copy.vibe === "roast") {
     text("receiptFooter", copy.receiptFooter, "receiptFooter");
     const p = copy.persona;
@@ -138,7 +139,8 @@ function validateCopy(copy, stats) {
         text(`persona.moves.${i}.name`, m.name, "moveName");
         text(`persona.moves.${i}.text`, m.text, "moveText");
         const value = typeof m.value === "string" ? m.value.match(/^\{([A-Za-z0-9_.]+)\}$/) : null;
-        if (!value || typeof resolve(stats, value[1]) !== "number") errors.push(`persona.moves.${i}.value: must be exactly one {placeholder} that resolves to a number`);
+        const v = value ? resolve(stats, value[1]) : void 0;
+        if (typeof v !== "number" || v <= 0) errors.push(`persona.moves.${i}.value: must be exactly one {placeholder} that resolves to a number above zero`);
       });
     }
     list("diary", copy.diary, 3, 5).forEach((d, i) => text(`diary.${i}`, d, "diary"));

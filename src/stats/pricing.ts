@@ -29,10 +29,10 @@ export const PRICES: Record<string, Price> = {
   'claude-haiku-4-5': std(1, 5),
 };
 
-/** Longest key that is a prefix of the model id, so dated ids like claude-haiku-4-5-20251001 match. */
+/** Exact model id, or a known id with a date suffix (claude-haiku-4-5-20251001). Other versions are not guessed. */
 export function priceFor(model: string): Price | undefined {
-  const key = Object.keys(PRICES).filter(k => model === k || model.startsWith(`${k}-`)).sort((a, b) => b.length - a.length)[0];
-  return key ? PRICES[key] : undefined;
+  const base = model.replace(/-\d{8}$/, '');
+  return Object.prototype.hasOwnProperty.call(PRICES, base) ? PRICES[base] : undefined;
 }
 
 export function apiValue(usage: Record<string, TokenSplit>): Stats['apiValue'] {
