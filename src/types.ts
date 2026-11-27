@@ -34,29 +34,17 @@ export interface EquivalentResult {
   sourceUrl: string;
 }
 
-/** Text Claude writes. Numbers only appear as {dotted.path} placeholders into Stats. */
+/** Text Claude writes (copy v2). Numbers only appear as {dotted.path} placeholders into Stats. */
 export interface Copy {
-  schemaVersion: 1;
+  schemaVersion: 2;
   vibe: 'professional' | 'fun' | 'roast';
   language: 'en' | 'nl';
-  profile?: { headline: string; strengths: { id: StrengthId; text: string }[] };
-  persona?: {
-    className: string; specialMove: string; weakness: string; nemesis: string;
-    /** Exactly 3 card moves; value is one {placeholder} that resolves to a number. */
-    moves?: { name: string; value: string; text: string }[];
-  };
-  /** One sentence under the token pair. */
-  tokensLine?: string;
-  /** Receipt footer for fun and roast. */
-  receiptFooter?: string;
-  /** Last line of the terminal replay. */
-  verdict?: string;
-  /** Professional closer heading. */
-  growthLine?: string;
-  diary?: string[];
-  awards?: { title: string; text: string }[];
-  relationship?: { status: string; text: string };
-  captions: Record<string, string>;
+  /** The user's title: the trading card's name, the clean style's header. */
+  title: string;
+  /** One line per card; growth only when the growth card renders. */
+  lines: { tokens: string; year: string; toolkit: string; growth?: string };
+  /** Per platform, without the repo link (code adds it). */
+  captions: { instagram: string; linkedin: string; x: string; discord: string };
 }
 
 export interface ProjectEntry {
