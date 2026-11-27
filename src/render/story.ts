@@ -8,7 +8,7 @@ import { fontFaceCss, type PaletteId } from './theme.js';
 
 /**
  * The tap-through story: every card that has data, in one style, one at a time, scaled to the window.
- * `pngs` lists the card files that exist (e.g. "cards/clean-tokens-story.png"); others get a screenshot hint.
+ * `pngs` lists the card files that exist (e.g. "cards/clean-auto-tokens-story.png"); others get a screenshot hint.
  */
 export function buildStory(opts: { stats: Stats; copy: Copy; style: StyleId; palette?: PaletteId; assetsDir: string; pngs: Set<string> }): string {
   const { stats, copy, style } = opts;
@@ -19,7 +19,7 @@ export function buildStory(opts: { stats: Stats; copy: Copy; style: StyleId; pal
   const slides = models.map((m, i) => {
     const out = renderCard(style, m, styleCtx(stats, copy, 'story', { index: i, total: models.length, progress: true }, opts.palette));
     css.add(out.css);
-    const png = `cards/${style}-${m.id}-story.png`;
+    const png = `cards/${style}-${opts.palette ?? 'auto'}-${m.id}-story.png`;
     const action = opts.pngs.has(png)
       ? `<a class="save" href="${png}" download>${s.save}</a>`
       : `<span class="hint">${s.screenshot}</span>`;

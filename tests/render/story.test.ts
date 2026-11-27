@@ -41,9 +41,9 @@ test('sparse stats render without holes', () => {
 });
 
 test("save link points at the style's PNG", () => {
-  const html = buildStory({ stats, copy: funCopy, style: 'card', assetsDir, pngs: new Set(['cards/card-year-story.png']) });
-  expect(html).toContain('href="cards/card-year-story.png"');
-  expect(html).not.toContain('href="cards/card-tokens-story.png"');
+  const html = buildStory({ stats, copy: funCopy, style: 'card', assetsDir, palette: 'grape', pngs: new Set(['cards/card-grape-year-story.png']) });
+  expect(html).toContain('href="cards/card-grape-year-story.png"');
+  expect(html).not.toContain('href="cards/card-grape-tokens-story.png"');
   expect(html).toContain('Screenshot this slide to share it');
 });
 

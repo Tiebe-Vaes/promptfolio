@@ -21,7 +21,7 @@
 - Defaults ("Make it now"): style `clean`, tone `professional`, format `story`, all four cards.
 - Tool calls on the Year card come from `activity.toolCalls` only (stats-cache), never mixed with `tools.calls`.
 - Every question in SKILL.md is an AskUserQuestion with at most 4 questions per screen and 4 options per question.
-- PNG file names: `cards/<style>-<card>-<format>.png`; README card: `readme-card.svg` and `readme-card.png` in the output folder.
+- PNG file names: `cards/<style>-<palette>-<card>-<format>.png` (palette added after the final review); README card: `readme-card.svg` and `readme-card.png` in the output folder.
 
 ## Review Focus
 

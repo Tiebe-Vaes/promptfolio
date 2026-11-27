@@ -85,7 +85,7 @@ async function main(): Promise<number> {
       if (format === 'readme') continue;
       const html = cardDocument(style[0], card, format, stats, copy, assetsDir, cards, palette[0]);
       if (!html) { if (format === formats.find(f => f !== 'readme')) console.log(`skipped ${card}: not enough data`); continue; }
-      const htmlPath = path.join(cardsDir, `${style[0]}-${card}-${format}.html`);
+      const htmlPath = path.join(cardsDir, `${style[0]}-${palette[0]}-${card}-${format}.html`);
       fs.writeFileSync(htmlPath, html);
       await shoot(htmlPath, htmlPath.replace(/\.html$/, '.png'), SIZES[format].w, SIZES[format].h);
     }
@@ -105,8 +105,8 @@ async function main(): Promise<number> {
 
   const captionsPath = path.join(dir, 'captions.json');
   fs.writeFileSync(captionsPath, JSON.stringify(buildCaptions(copy, stats), null, 2));
-  // Earlier runs count too, other styles never do: the story links the PNGs of this style that exist on disk.
-  const pngs = new Set(fs.readdirSync(cardsDir).filter(f => f.startsWith(`${style[0]}-`) && f.endsWith('-story.png')).map(f => `cards/${f}`));
+  // Earlier runs count too, other styles and palettes never do: the story links this look's PNGs that exist on disk.
+  const pngs = new Set(fs.readdirSync(cardsDir).filter(f => f.startsWith(`${style[0]}-${palette[0]}-`) && f.endsWith('-story.png')).map(f => `cards/${f}`));
   const storyPath = path.join(dir, 'story.html');
   fs.writeFileSync(storyPath, buildStory({ stats, copy, style: style[0], palette: palette[0], assetsDir, pngs }));
   for (const f of [storyPath, ...written, captionsPath]) console.log(f);

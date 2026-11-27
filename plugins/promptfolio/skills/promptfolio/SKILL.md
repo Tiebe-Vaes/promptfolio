@@ -32,7 +32,7 @@ Turns the user's local Claude Code history into four share cards (Tokens, Year i
    Then ask one more question, **Colour** (single): Match my language (the colour of their top language, name it, e.g. "TypeScript blue") / Ink (black and white) / Grape (violet) / Sunset (orange red). Map to `auto`, `ink`, `grape`, `sunset`. Make it now uses `auto`.
 6. **Write the copy.** Write `<out>/copy.json` following **Copy rules**, then run `node "<skill>/scripts/validate.mjs" <out>/copy.json <out>/stats.json`. Each output line names a JSON path and the problem; fix those and rerun. Done when it prints `OK`. After 3 failed rounds, show the user the remaining errors.
 7. **Render.** Count the PNGs (cards x non-readme formats, plus 1 for readme) and say they take a few seconds each. Run `node "<skill>/scripts/render.mjs" --dir <out> --style <clean|receipt|terminal|card> --palette <auto|ink|grape|sunset> --cards <list> --formats <list>`. It prints every written path, absolute, one per line, and `skipped <card>: not enough data` for a card without data. Done when it exits 0.
-8. **Show where it is.** Open `<out>/story.html`. Then list the folder and every printed file as a markdown link with its absolute path, for example `[clean-tokens-story.png](C:/Users/me/promptfolio-2026/cards/clean-tokens-story.png)`. Mention skipped cards in one line. If render said PNGs were skipped, say the story still works and screenshots are the way to share. Done when every written file is linked.
+8. **Show where it is.** Open `<out>/story.html`. Then list the folder and every printed file as a markdown link with its absolute path, for example `[clean-auto-tokens-story.png](C:/Users/me/promptfolio-2026/cards/clean-auto-tokens-story.png)`. Mention skipped cards in one line. If render said PNGs were skipped, say the story still works and screenshots are the way to share. Done when every written file is linked.
 9. **What now?** Ask "What now?" with: Share / On my GitHub profile / Other format or style / Done. Repeat this step after each branch except Done.
    - **Share.** Ask which platform: Instagram / LinkedIn / X / Discord. When no rendered format fits it (Instagram: story or square; LinkedIn: square or wide; X and Discord: wide), offer to render one and do it on a yes. Read `<out>/captions.json` and show that platform's `text` in a code block to copy. X: open its `intentUrl` (the post opens prefilled; the user attaches the PNG). Instagram: name the PNG to send to the phone. LinkedIn and Discord: open the `cards` folder. You never post anything yourself.
    - **On my GitHub profile.** If `readme-card.svg` is missing, rerun render with the same `--style` and `--palette` and `--formats readme`. Show the link to `readme-card.svg` and the snippet `![Promptfolio](readme-card.svg)`, to commit next to the README of the user's profile repository (the repository named after their GitHub username).
@@ -51,7 +51,7 @@ Shape (copy v2):
 {
   "schemaVersion": 2,
   "vibe": "professional | fun | roast",
-  "language": "en | nl",
+  "language": "en",
   "title": "",
   "lines": { "tokens": "", "year": "", "toolkit": "", "growth": "" },
   "captions": { "instagram": "", "linkedin": "", "x": "", "discord": "" }

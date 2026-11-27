@@ -916,7 +916,7 @@ function buildStory(opts) {
   const slides = models.map((m, i) => {
     const out = renderCard(style, m, styleCtx(stats, copy, "story", { index: i, total: models.length, progress: true }, opts.palette));
     css.add(out.css);
-    const png = `cards/${style}-${m.id}-story.png`;
+    const png = `cards/${style}-${opts.palette ?? "auto"}-${m.id}-story.png`;
     const action = opts.pngs.has(png) ? `<a class="save" href="${png}" download>${s.save}</a>` : `<span class="hint">${s.screenshot}</span>`;
     return `<figure class="frame" data-i="${i}"${i === 0 ? "" : " hidden"}><div class="fit">${out.html}</div><figcaption>${action}</figcaption></figure>`;
   });
@@ -1055,7 +1055,7 @@ async function main() {
         if (format2 === formats.find((f) => f !== "readme")) console.log(`skipped ${card}: not enough data`);
         continue;
       }
-      const htmlPath = path3.join(cardsDir, `${style[0]}-${card}-${format2}.html`);
+      const htmlPath = path3.join(cardsDir, `${style[0]}-${palette[0]}-${card}-${format2}.html`);
       fs3.writeFileSync(htmlPath, html);
       await shoot(htmlPath, htmlPath.replace(/\.html$/, ".png"), SIZES[format2].w, SIZES[format2].h);
     }
@@ -1073,7 +1073,7 @@ async function main() {
   }
   const captionsPath = path3.join(dir, "captions.json");
   fs3.writeFileSync(captionsPath, JSON.stringify(buildCaptions(copy, stats), null, 2));
-  const pngs = new Set(fs3.readdirSync(cardsDir).filter((f) => f.startsWith(`${style[0]}-`) && f.endsWith("-story.png")).map((f) => `cards/${f}`));
+  const pngs = new Set(fs3.readdirSync(cardsDir).filter((f) => f.startsWith(`${style[0]}-${palette[0]}-`) && f.endsWith("-story.png")).map((f) => `cards/${f}`));
   const storyPath = path3.join(dir, "story.html");
   fs3.writeFileSync(storyPath, buildStory({ stats, copy, style: style[0], palette: palette[0], assetsDir, pngs }));
   for (const f of [storyPath, ...written, captionsPath]) console.log(f);
