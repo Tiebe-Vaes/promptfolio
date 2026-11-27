@@ -8,6 +8,8 @@ import { readTranscripts } from './sources/transcripts.js';
 import { longestGap, longestStreak } from './streaks.js';
 import { localDate } from './time.js';
 import { strengthCandidates } from './strengths.js';
+import { growth, yearUsageByModel } from './stats/extras.js';
+import { apiValue } from './stats/pricing.js';
 import type { DailyActivity, ProjectEntry, Stats } from './types.js';
 
 const LANGUAGES: Record<string, string> = {
@@ -88,6 +90,10 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
     if (lang) languageCounts[lang] = (languageCounts[lang] ?? 0) + n;
   }
 
+  const usage = yearUsageByModel(cache, transcripts, year, fromCache);
+  const yearOutput = usage ? Object.values(usage).reduce((a, u) => a + u.output, 0) || null : null;
+  const byLanguage = Object.entries(languageCounts).sort(([a, x], [b2, y2]) => y2 - x || a.localeCompare(b2)).map(([language, count]) => ({ language, count }));
+
   const modeTotal = Object.values(transcripts.permissionModes).reduce((a, b) => a + b, 0);
   const ls = cache.longestSession;
   const yearFrom = [dates[0], history.from, transcripts.from].filter((d): d is string => !!d).sort()[0] ?? null;
@@ -117,8 +123,16 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
       hourCounts: history.hourCounts,
       lateNightSessionShare: share(history.lateNightSessions, history.sessions),
       byMonth,
+      daily: daily.map(d => ({ date: d.date, messages: d.messages })),
+      growth: growth(byMonth),
     },
-    tokens: { yearTotal: Object.values(byModel).reduce((a, b) => a + b, 0), byModel, detailed: transcripts.tokens },
+    tokens: {
+      yearTotal: Object.values(byModel).reduce((a, b2) => a + b2, 0),
+      byModel,
+      detailed: transcripts.tokens,
+      yearOutput,
+      readPerWritten: null,
+    },
     prompts: {
       count: history.prompts,
       slashCommands: history.slashCommands,
@@ -142,7 +156,8 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
     entrypoints: transcripts.entrypoints,
     files: {
       edited: transcripts.files.edited,
-      byLanguage: Object.entries(languageCounts).sort(([a, x], [b, y]) => y - x || a.localeCompare(b)).map(([language, count]) => ({ language, count })),
+      byLanguage,
+      topLanguage: byLanguage[0]?.language ?? null,
     },
     sessions: {
       ...transcripts.sessions,
@@ -160,7 +175,9 @@ export async function buildStats(opts: { claudeDir: string; year: number; tz: st
     },
     strengthCandidates: [],
     equivalents: computeEquivalents(history.prompts),
+    apiValue: usage ? apiValue(usage) : null,
   };
+  stats.tokens.readPerWritten = yearOutput && stats.tokens.yearTotal ? Math.round(stats.tokens.yearTotal / yearOutput) : null;
   stats.strengthCandidates = strengthCandidates(stats);
   return stats;
 }

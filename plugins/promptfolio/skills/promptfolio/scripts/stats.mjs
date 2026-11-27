@@ -218,7 +218,7 @@ async function readHistory(file, opts) {
 
 // src/sources/statsCache.ts
 import fs2 from "node:fs";
-var EMPTY = { through: null, daily: [], dailyTokens: [], firstSessionDate: null, longestSession: null };
+var EMPTY = { through: null, daily: [], dailyTokens: [], firstSessionDate: null, longestSession: null, modelUsage: {} };
 var num = (v) => typeof v === "number" && Number.isFinite(v) ? v : 0;
 var str = (v) => typeof v === "string" ? v : null;
 var arr = (v) => Array.isArray(v) ? v : [];
@@ -238,6 +238,7 @@ async function readStatsCache(file) {
     daily,
     dailyTokens: arr(raw.dailyModelTokens).filter((d) => typeof d?.date === "string" && d.tokensByModel && typeof d.tokensByModel === "object").map((d) => ({ date: d.date, tokensByModel: d.tokensByModel })),
     firstSessionDate: str(raw.firstSessionDate),
+    modelUsage: Object.fromEntries(Object.entries(raw.modelUsage && typeof raw.modelUsage === "object" ? raw.modelUsage : {}).filter(([, u]) => u && typeof u === "object").map(([m, u]) => [m, { input: num(u.inputTokens), output: num(u.outputTokens), cacheRead: num(u.cacheReadInputTokens), cacheCreation: num(u.cacheCreationInputTokens) }])),
     longestSession: ls && typeof ls === "object" ? { durationMs: num(ls.duration), messages: num(ls.messageCount), timestamp: str(ls.timestamp) ?? "" } : null
   };
 }
@@ -304,6 +305,7 @@ async function readTranscripts(files, opts) {
     to: null,
     daily: [],
     dailyTokens: [],
+    dailyUsage: {},
     tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, thinking: 0, byModel: {} },
     tools: { calls: 0, byName: {}, bash: 0, testRuns: 0, commits: 0, mcpCalls: 0, webSearches: 0 },
     denials: { userRejected: 0, automatic: 0, byTool: {} },
@@ -399,6 +401,12 @@ async function readTranscripts(files, opts) {
           bump(t.tokens.byModel, r.message.model, total);
           if (!tokensByDate.has(date)) tokensByDate.set(date, {});
           bump(tokensByDate.get(date), r.message.model, total);
+          const day2 = t.dailyUsage[date] ??= {};
+          const u2 = day2[r.message.model] ??= { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 };
+          u2.input += input;
+          u2.output += output;
+          u2.cacheRead += cacheRead;
+          u2.cacheCreation += cacheCreation;
         }
         for (const b of Array.isArray(r.message.content) ? r.message.content : []) {
           if (b?.type !== "tool_use" || typeof b.name !== "string") continue;
@@ -485,6 +493,75 @@ function strengthCandidates(stats) {
   }).filter((c) => c.value > 0).sort((a, b) => b.score - a.score);
 }
 
+// src/stats/extras.ts
+function growth(byMonth) {
+  const months = byMonth.filter((m) => m.messages > 0);
+  if (months.length < 2) return null;
+  const first = months[0];
+  const peak = months.reduce((best, m) => m.messages > best.messages ? m : best, first);
+  return {
+    first: { month: first.month, messages: first.messages },
+    peak: { month: peak.month, messages: peak.messages },
+    factor: Math.round(peak.messages / first.messages)
+  };
+}
+var add = (a, b) => ({
+  input: a.input + b.input,
+  output: a.output + b.output,
+  cacheRead: a.cacheRead + b.cacheRead,
+  cacheCreation: a.cacheCreation + b.cacheCreation
+});
+function yearUsageByModel(cache, transcripts, year, fromCache) {
+  const usage = {};
+  const cacheCovers = cache.firstSessionDate?.startsWith(String(year)) ?? false;
+  if (cacheCovers) for (const [m, u] of Object.entries(cache.modelUsage)) usage[m] = { ...u };
+  for (const [date, models] of Object.entries(transcripts.dailyUsage)) {
+    if (!date.startsWith(String(year)) || fromCache(date)) continue;
+    for (const [m, u] of Object.entries(models)) usage[m] = usage[m] ? add(usage[m], u) : { ...u };
+  }
+  return Object.keys(usage).length > 0 ? usage : null;
+}
+
+// src/stats/pricing.ts
+var PRICES_AS_OF = "2026-11-03";
+var std = (input, output, cacheRead = input * 0.1) => ({ input, output, cacheWrite: input * 1.25, cacheRead });
+var PRICES = {
+  "claude-fable-5-2": std(8, 40, 0.2),
+  "claude-fable-5-1": std(10, 50),
+  "claude-fable-5": std(10, 50),
+  "claude-opus-5-5": std(4, 20, 0.2),
+  "claude-opus-5": std(5, 25),
+  "claude-opus-4-8": std(5, 25),
+  "claude-opus-4-7": std(5, 25),
+  "claude-opus-4-6": std(5, 25),
+  "claude-sonnet-5-5": std(2, 10, 0.1),
+  "claude-sonnet-5": std(2, 10),
+  "claude-sonnet-4-6": std(3, 15),
+  "claude-haiku-5-5": std(0.1, 0.5),
+  "claude-haiku-4-5": std(1, 5)
+};
+function priceFor(model) {
+  const key = Object.keys(PRICES).filter((k) => model === k || model.startsWith(`${k}-`)).sort((a, b) => b.length - a.length)[0];
+  return key ? PRICES[key] : void 0;
+}
+function apiValue(usage) {
+  const entries2 = Object.entries(usage).filter(([m, u]) => m !== "<synthetic>" && u.input + u.output + u.cacheRead + u.cacheCreation > 0);
+  if (entries2.length === 0) return null;
+  let usd = 0;
+  const models = [];
+  const skippedModels = [];
+  for (const [model, u] of entries2) {
+    const p = priceFor(model);
+    if (!p) {
+      skippedModels.push(model);
+      continue;
+    }
+    models.push(model);
+    usd += (u.input * p.input + u.output * p.output + u.cacheRead * p.cacheRead + u.cacheCreation * p.cacheWrite) / 1e6;
+  }
+  return { usd, models: models.sort(), skippedModels: skippedModels.sort(), pricesAsOf: PRICES_AS_OF };
+}
+
 // src/buildStats.ts
 var LANGUAGES = {
   ".ts": "TypeScript",
@@ -560,6 +637,9 @@ async function buildStats(opts) {
     const lang = LANGUAGES[ext];
     if (lang) languageCounts[lang] = (languageCounts[lang] ?? 0) + n;
   }
+  const usage = yearUsageByModel(cache, transcripts, year, fromCache);
+  const yearOutput = usage ? Object.values(usage).reduce((a, u) => a + u.output, 0) || null : null;
+  const byLanguage = Object.entries(languageCounts).sort(([a, x], [b2, y2]) => y2 - x || a.localeCompare(b2)).map(([language, count]) => ({ language, count }));
   const modeTotal = Object.values(transcripts.permissionModes).reduce((a, b) => a + b, 0);
   const ls = cache.longestSession;
   const yearFrom = [dates[0], history.from, transcripts.from].filter((d) => !!d).sort()[0] ?? null;
@@ -587,9 +667,17 @@ async function buildStats(opts) {
       busiestMonth: busiestMonth ? { month: busiestMonth.month, messages: busiestMonth.messages } : null,
       hourCounts: history.hourCounts,
       lateNightSessionShare: share(history.lateNightSessions, history.sessions),
-      byMonth
+      byMonth,
+      daily: daily.map((d) => ({ date: d.date, messages: d.messages })),
+      growth: growth(byMonth)
     },
-    tokens: { yearTotal: Object.values(byModel).reduce((a, b) => a + b, 0), byModel, detailed: transcripts.tokens },
+    tokens: {
+      yearTotal: Object.values(byModel).reduce((a, b2) => a + b2, 0),
+      byModel,
+      detailed: transcripts.tokens,
+      yearOutput,
+      readPerWritten: null
+    },
     prompts: {
       count: history.prompts,
       slashCommands: history.slashCommands,
@@ -612,7 +700,8 @@ async function buildStats(opts) {
     entrypoints: transcripts.entrypoints,
     files: {
       edited: transcripts.files.edited,
-      byLanguage: Object.entries(languageCounts).sort(([a, x], [b, y2]) => y2 - x || a.localeCompare(b)).map(([language, count]) => ({ language, count }))
+      byLanguage,
+      topLanguage: byLanguage[0]?.language ?? null
     },
     sessions: {
       ...transcripts.sessions,
@@ -630,8 +719,10 @@ async function buildStats(opts) {
       total: tooling.skills + tooling.agents + tooling.hooks
     },
     strengthCandidates: [],
-    equivalents: computeEquivalents(history.prompts)
+    equivalents: computeEquivalents(history.prompts),
+    apiValue: usage ? apiValue(usage) : null
   };
+  stats.tokens.readPerWritten = yearOutput && stats.tokens.yearTotal ? Math.round(stats.tokens.yearTotal / yearOutput) : null;
   stats.strengthCandidates = strengthCandidates(stats);
   return stats;
 }

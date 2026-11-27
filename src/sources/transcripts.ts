@@ -2,7 +2,7 @@ import path from 'node:path';
 import { readJsonl } from '../jsonl.js';
 import { GIT_COMMIT_RE, TEST_RUNNER_RE } from '../text.js';
 import { localDate } from '../time.js';
-import type { DailyActivity } from '../types.js';
+import type { DailyActivity, TokenSplit } from '../types.js';
 
 export interface TranscriptStats {
   from: string | null;
@@ -10,6 +10,8 @@ export interface TranscriptStats {
   daily: DailyActivity[];
   /** Same shape as stats-cache dailyModelTokens, so the two can be merged at a date cutoff. */
   dailyTokens: { date: string; tokensByModel: Record<string, number> }[];
+  /** local date -> model -> token split, for year output and API value. */
+  dailyUsage: Record<string, Record<string, TokenSplit>>;
   tokens: { input: number; output: number; cacheRead: number; cacheCreation: number; thinking: number; byModel: Record<string, number> };
   tools: { calls: number; byName: Record<string, number>; bash: number; testRuns: number; commits: number; mcpCalls: number; webSearches: number };
   denials: { userRejected: number; automatic: number; byTool: Record<string, number> };
@@ -53,7 +55,7 @@ const bump = (o: Record<string, number>, k: string, by = 1): void => { o[k] = (o
 
 export async function readTranscripts(files: string[], opts: { year: number; tz: string }): Promise<TranscriptStats> {
   const t: TranscriptStats = {
-    from: null, to: null, daily: [], dailyTokens: [],
+    from: null, to: null, daily: [], dailyTokens: [], dailyUsage: {},
     tokens: { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, thinking: 0, byModel: {} },
     tools: { calls: 0, byName: {}, bash: 0, testRuns: 0, commits: 0, mcpCalls: 0, webSearches: 0 },
     denials: { userRejected: 0, automatic: 0, byTool: {} },
@@ -160,6 +162,9 @@ export async function readTranscripts(files: string[], opts: { year: number; tz:
           bump(t.tokens.byModel, r.message.model, total);
           if (!tokensByDate.has(date)) tokensByDate.set(date, {});
           bump(tokensByDate.get(date)!, r.message.model, total);
+          const day = (t.dailyUsage[date] ??= {});
+          const u = (day[r.message.model] ??= { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 });
+          u.input += input; u.output += output; u.cacheRead += cacheRead; u.cacheCreation += cacheCreation;
         }
 
         for (const b of Array.isArray(r.message.content) ? r.message.content : []) {

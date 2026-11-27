@@ -8,6 +8,14 @@ export interface DailyActivity {
   toolCalls: number;
 }
 
+/** Tokens by kind, as the API bills them. */
+export interface TokenSplit {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheCreation: number;
+}
+
 export type StrengthId =
   | 'plansFirst' | 'keepsControl' | 'tests' | 'ships' | 'buildsTooling' | 'researches' | 'range' | 'consistency';
 
@@ -72,8 +80,18 @@ export interface Stats {
     hourCounts: number[];
     lateNightSessionShare: number;
     byMonth: { month: string; activeDays: number; messages: number; sessions: number }[];
+    daily: { date: string; messages: number }[];
+    growth: { first: { month: string; messages: number }; peak: { month: string; messages: number }; factor: number } | null;
   };
-  tokens: { yearTotal: number; byModel: Record<string, number>; detailed: TranscriptStats['tokens'] };
+  tokens: {
+    yearTotal: number;
+    byModel: Record<string, number>;
+    detailed: TranscriptStats['tokens'];
+    /** Tokens Claude wrote this year; null when no source covers the year. */
+    yearOutput: number | null;
+    /** Tokens read (all, incl. cache) per token written. */
+    readPerWritten: number | null;
+  };
   prompts: {
     count: number;
     slashCommands: number;
@@ -87,11 +105,13 @@ export interface Stats {
   modes: { planShare: number; byMode: Record<string, number> };
   effort: Record<string, number>;
   entrypoints: Record<string, number>;
-  files: { edited: number; byLanguage: { language: string; count: number }[] };
+  files: { edited: number; byLanguage: { language: string; count: number }[]; topLanguage: string | null };
   sessions: TranscriptStats['sessions'] & { longestMinutesYear: number | null };
   projects: { count: number; branchCount: number; list: ProjectEntry[] };
   /** total = skills + agents + hooks: things the user built, not installed plugins. */
   tooling: { skills: number; agents: number; hooks: number; plugins: number; total: number };
   strengthCandidates: StrengthCandidate[];
   equivalents: EquivalentResult[];
+  /** Estimate at Anthropic's published API prices. */
+  apiValue: { usd: number; models: string[]; skippedModels: string[]; pricesAsOf: string } | null;
 }

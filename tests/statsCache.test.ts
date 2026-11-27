@@ -14,7 +14,7 @@ test('reads stats-cache', async () => {
 
 test('missing stats-cache', async () => {
   const d = await readStatsCache(fixture('nope.json'));
-  expect(d).toEqual({ through: null, daily: [], dailyTokens: [], firstSessionDate: null, longestSession: null });
+  expect(d).toEqual({ through: null, daily: [], dailyTokens: [], firstSessionDate: null, longestSession: null, modelUsage: {} });
 });
 
 test('missing lastComputedDate falls back to the latest cached day', async () => {
