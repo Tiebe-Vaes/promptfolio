@@ -5,58 +5,60 @@ description: Promptfolio builds a shareable year recap of the user's Claude Code
 
 # Promptfolio
 
-Turns the user's local Claude Code history into a year recap. Code computes every number; you write the words.
+Turns the user's local Claude Code history into four share cards (Tokens, Year in numbers, Toolkit, Growth) in one style. Code computes every number; you write the words.
 
-**Script paths.** The scripts live in `scripts/` inside this skill's base directory (the folder this SKILL.md was loaded from). Write `<skill>` below as that absolute folder, and quote it: `node "<skill>/scripts/doctor.mjs"`. Output files go to `./promptfolio-<year>/` in the user's current folder.
+**Script paths.** The scripts live in `scripts/` inside this skill's base directory (the folder this SKILL.md was loaded from). Write `<skill>` below as that absolute folder, and quote it: `node "<skill>/scripts/doctor.mjs"`. Output goes to `./promptfolio-<year>/` in the user's current folder; write `<out>` for its absolute path.
+
+**Questions.** Every question is an AskUserQuestion: at most 4 questions per call, at most 4 options per question. This works the same in the CLI and the desktop app. Never send the user to an HTML page to choose.
+
+**Language.** Write questions, copy and messages in the language of the conversation: Dutch (`nl`) when the user writes Dutch, else English (`en`).
+
+**Opening a file, folder or URL.** `Start-Process "<target>"` in PowerShell, `cmd /c start "" "<target>"` in cmd or Git Bash on Windows, `open "<target>"` on macOS, `xdg-open "<target>"` on Linux.
 
 ## Steps
 
 1. **Check Node.** Run `node -v`. Done when it prints v18.3 or higher. If Node is missing or older, tell the user Promptfolio needs Node 18.3+ and end here.
-2. **Doctor.** Run `node "<skill>/scripts/doctor.mjs"`. Done when you have its JSON. If `claudeDirExists` is false, tell the user no Claude Code data was found at `claudeDir` and end here.
-3. **Onboarding.** Say: "Quick setup (4 taps), or type go for the professional version." Then ask one AskUserQuestion with four questions:
-   - Vibe: Professional / Fun / Roast me
-   - Posting where (multi-select): Instagram story / LinkedIn / X or Discord / Just me. Map the answers to `--targets`: Instagram story → `instagram`, LinkedIn → `linkedin`, X or Discord → `x,discord`, Just me → no targets.
-   - Project names: Hide all / Pick which / Show
-   - Language: English / Nederlands
+2. **Doctor.** Run `node "<skill>/scripts/doctor.mjs"`. If `claudeDirExists` is false, tell the user no Claude Code data was found at `claudeDir` and end here. Show exactly: "The scripts upload nothing. Claude reads redacted stats in your own session to write the text." In January or February only, ask whether the recap is for last year or this year. Done when the year is known.
+3. **Stats.** Run `node "<skill>/scripts/stats.mjs" --out <out> --projects hide` (add `--year <year>` for last year). Done when it prints the paths of `stats.json` and `sample.json`. Read both.
+4. **Screen 1.** Ask "How do you want your recap?" with two options: "Make it now" (Clean style, Professional tone, Story format, all four cards) and "Personalise (1 min)" (four quick questions). Make it now skips step 5.
+5. **Screen 2.** One AskUserQuestion with four questions:
+   - **Style** (single): Clean / Receipt / Terminal / Trading card. Give each option a `preview`: the Tokens card in that style as plain text, filled with the user's numbers from `stats.json` (`tokens.yearTotal`, `tokens.yearOutput`, `tokens.favoriteModel`). See **Style previews**.
+   - **Tone** (single): Professional (factual, why you're a good dev) / Fun (light, laughable) / Roast me (honest, can sting).
+   - **Formats** (multi): Story 9:16 (Instagram and TikTok stories) / Square 1:1 (Instagram feed, LinkedIn, Discord) / Wide 16:9 (Discord, X, Slack, LinkedIn) / GitHub README 3:1 (profile banner). Map to `story`, `square`, `wide`, `readme`.
+   - **Cards** (multi): Tokens / Year in numbers / Toolkit / Growth. Describe each in one line with the user's real numbers (for example "18.1B tokens, 72.5M written, Opus 5.5 favourite"). Map to `tokens`, `year`, `toolkit`, `growth`.
 
-   "go" at any point means: professional, hide, English, targets `instagram,linkedin,x`. For "Pick which", run `node "<skill>/scripts/doctor.mjs" --projects`, show the user the `projects` list, and ask which names may appear. Done when vibe, project mode (plus allowed names for pick) and language are known.
-4. **Retention.** If `cleanupPeriodDays` is null or below 366, explain: Claude Code deletes detailed session logs after that many days (30 by default), so this recap's detailed stats cover only that window. Offer to set `cleanupPeriodDays` to 400 in `<claudeDir>/settings.json` so next year's recap is complete. Edit the file only after the user says yes, preserving every other setting.
-5. **Privacy line.** Show exactly: "The scripts upload nothing. Claude reads redacted stats in your own session to write the text."
-6. **Stats.** Run `node "<skill>/scripts/stats.mjs" --out ./promptfolio-<year> --projects <hide|pick|show> [--allow name1,name2]`. Done when it prints the paths of `stats.json` and `sample.json`.
-7. **Write the copy.** Read both files, then write `./promptfolio-<year>/copy.json` following **Copy rules** below.
-8. **Validate.** Run `node "<skill>/scripts/validate.mjs" ./promptfolio-<year>/copy.json ./promptfolio-<year>/stats.json`. Each output line names a JSON path and the problem; fix those and rerun. Done when it prints `OK`. After 3 failed rounds, show the user the remaining errors.
-9. **Render.** Run `node "<skill>/scripts/render.mjs" --dir ./promptfolio-<year> --targets <targets>` (omit `--targets` for Just me). It prints every file it wrote. Rendering PNGs takes about ten seconds per image; say so before you start. Done when it exits 0.
-10. **Show it.** Open `./promptfolio-<year>/story.html` with the default browser: `Start-Process` in PowerShell, `cmd /c start "" <file>` in cmd or Git Bash on Windows, `open` on macOS, `xdg-open` on Linux. List the PNGs in `cards/` by where they fit: `*-story.png` for Instagram stories, `*-feed.png` for feed posts and LinkedIn, `*-landscape.png` for X, Discord and LinkedIn link posts. Mention `readme-card.svg` for a GitHub profile README (commit it to the profile repo and reference it with `![Promptfolio](readme-card.svg)`). If render said no browser was found, tell the user the story still works and screenshots are the way to share.
+   Done when style, tone, formats and cards are known. An empty multi-select means the default (Story; all cards).
+6. **Write the copy.** Write `<out>/copy.json` following **Copy rules**, then run `node "<skill>/scripts/validate.mjs" <out>/copy.json <out>/stats.json`. Each output line names a JSON path and the problem; fix those and rerun. Done when it prints `OK`. After 3 failed rounds, show the user the remaining errors.
+7. **Render.** Count the PNGs (cards x non-readme formats, plus 1 for readme) and say they take a few seconds each. Run `node "<skill>/scripts/render.mjs" --dir <out> --style <clean|receipt|terminal|card> --cards <list> --formats <list>`. It prints every written path, absolute, one per line, and `skipped <card>: not enough data` for a card without data. Done when it exits 0.
+8. **Show where it is.** Open `<out>/story.html`. Then list the folder and every printed file as a markdown link with its absolute path, for example `[clean-tokens-story.png](C:/Users/me/promptfolio-2026/cards/clean-tokens-story.png)`. Mention skipped cards in one line. If render said PNGs were skipped, say the story still works and screenshots are the way to share. Done when every written file is linked.
+9. **What now?** Ask "What now?" with: Share / On my GitHub profile / Other format or style / Done. Repeat this step after each branch except Done.
+   - **Share.** Ask which platform: Instagram / LinkedIn / X / Discord. When no rendered format fits it (Instagram: story or square; LinkedIn: square or wide; X and Discord: wide), offer to render one and do it on a yes. Read `<out>/captions.json` and show that platform's `text` in a code block to copy. X: open its `intentUrl` (the post opens prefilled; the user attaches the PNG). Instagram: name the PNG to send to the phone. LinkedIn and Discord: open the `cards` folder. You never post anything yourself.
+   - **On my GitHub profile.** If `readme-card.svg` is missing, rerun render with the same `--style` and `--formats readme`. Show the link to `readme-card.svg` and the snippet `![Promptfolio](readme-card.svg)`, to commit next to the README of the user's profile repository (the repository named after their GitHub username).
+   - **Other format or style.** Ask which formats and, if wanted, which style (the same options as step 5). Rerun render with only those, then link the new files.
+   - **Done.** Open the `<out>` folder. If doctor's `cleanupPeriodDays` is null or below 366, explain that Claude Code deletes detailed session logs after that many days (30 by default), so next year's recap is fuller if they are kept, and offer to set `cleanupPeriodDays` to 400 in `<claudeDir>/settings.json`. Edit only after a yes, keeping every other setting. End with one line: "Made with Promptfolio: https://github.com/Tiebe-Vaes/promptfolio".
+
+## Style previews
+
+Plain text, about 24 characters wide, 8 to 12 lines, with the user's numbers. Clean: the big number, "tokens in <year>", then written and favourite model. Receipt: a `PROMPTFOLIO <year>` header, dashed rules, label/value lines, a barcode line of `|` and spaces. Terminal: `$ promptfolio tokens`, then `read ..... <n>` style rows and a `$ _` prompt. Trading card: `<title> Lv <n>` on top, a box marked `[creature]`, stat rows and `card 1/4`. End every preview with `github.com/Tiebe-Vaes/promptfolio`.
 
 ## Copy rules
 
-Shape:
+Shape (copy v2):
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "vibe": "professional | fun | roast",
   "language": "en | nl",
-  "profile": { "headline": "", "strengths": [{ "id": "", "text": "" }] },
-  "persona": {
-    "className": "", "specialMove": "", "weakness": "", "nemesis": "",
-    "moves": [{ "name": "", "value": "{tools.bash}", "text": "" }]
-  },
-  "diary": [""],
-  "awards": [{ "title": "", "text": "" }],
-  "relationship": { "status": "", "text": "" },
-  "tokensLine": "",
-  "verdict": "",
-  "receiptFooter": "",
-  "growthLine": "",
-  "captions": {}
+  "title": "",
+  "lines": { "tokens": "", "year": "", "toolkit": "", "growth": "" },
+  "captions": { "instagram": "", "linkedin": "", "x": "", "discord": "" }
 }
 ```
 
-- **Every vibe** fills `tokensLine` (one sentence under "tokens read / tokens written", e.g. "Claude reread your code {tokens.readPerWritten} times for every token it wrote back.") and `verdict` (the last line of the terminal replay, a short judgement of how the user works).
-- **professional** fills `profile`: a headline and 3 strengths (fewer only when `stats.strengthCandidates` has fewer) whose `id`s come from `stats.strengthCandidates` (prefer the highest `score`). Each strength states the habit and its number factually, e.g. "Reviewed and blocked {denials.userRejected} tool calls". When `stats.activity.growth` exists, also fill `growthLine`, the closer heading, e.g. "{activity.growth.factor} times busier by {activity.growth.peak.month}" (month placeholders print as month names).
-- **fun** and **roast** fill `persona` with a class name (it becomes the trading card's title) and exactly 3 `moves`: each has a short name, a `value` that is one number placeholder above zero (pick tools, tests, commits, searches: whatever is highest for this user) and a one-line description. Also 3-5 `diary` entries (Claude's diary about the user, first person), 3-4 `awards`, `relationship` and `receiptFooter` (one closing line printed at the bottom of the receipt). Fun teases lightly; roast is honest and can sting, still about habits, never about the person's worth.
-- **Numbers only as placeholders.** Every number is a `{dotted.path}` from `sample.json` `placeholders`. Digits typed into text fail validation.
-- **Specific.** Every line points at something real in the data: a top tool, a language, a late-night share, a session title from `sample.json` `vibeHints`. A line that would fit any user gets rewritten.
-- **Honest comparisons.** Compare the user only with their own data (months, habits). Rankings against other users stay out, since there is no data on other users.
-- Write in the chosen language. Keep within the length limits the validator reports.
+- **title** (22 characters max): a short title for the user, built from their data, e.g. "TypeScript builder" or "Shell Warlock". It is the trading card's name and the header of the clean cards.
+- **lines** (90 max each): one line per card, under its numbers. `growth` is required when `stats.activity.byMonth` has two or more months, else leave it out. **Professional** lines state a habit with its number, taken from `stats.strengthCandidates` (highest `score` first), e.g. "Shipped {tools.commits} commits, most of them small." **Fun** teases lightly. **Roast** is honest and can sting, about habits only, never about the person's worth.
+- **captions** (200 max each), without the repo link (code adds it): Instagram casual, LinkedIn factual (the strongest habit and number), X short, Discord casual.
+- **Numbers only as placeholders.** Every number is a `{dotted.path}` from `sample.json` `placeholders`. Month placeholders print as month names. Digits typed into text fail validation.
+- **Specific.** Every line points at something real in the data: a top tool, a language, a busiest month, a habit from `sample.json` `vibeHints`. A line that would fit any user gets rewritten.
+- **Honest comparisons.** Compare the user only with their own data (months, habits). Rankings against other users stay out; there is no data on other users.
