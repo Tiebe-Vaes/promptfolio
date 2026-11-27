@@ -17,17 +17,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Install Chrome so the PNG tests run
-        if: runner.os == 'Linux'
-        id: chrome
-        uses: browser-actions/setup-chrome@v1
-        with:
-          install-dependencies: true
       - run: npm ci
       - run: npm run typecheck
+      # ubuntu-latest ships Google Chrome with a working sandbox, so the PNG tests run there.
       - run: npm test
-        env:
-          PROMPTFOLIO_BROWSER: ${{ steps.chrome.outputs.chrome-path }}
       - run: npm run build
       - name: Built scripts are committed and fresh
         run: git diff --exit-code plugins/

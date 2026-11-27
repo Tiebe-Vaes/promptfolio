@@ -948,14 +948,15 @@ var TARGETS = ["instagram", "linkedin", "x", "discord"];
 var assetsDir = path3.join(path3.dirname(fileURLToPath(import.meta.url)), "..", "assets");
 async function main() {
   const { values } = parseArgs({
-    options: { dir: { type: "string" }, targets: { type: "string", default: "" }, "no-png": { type: "boolean", default: false } }
+    // No `default:` options: parseArgs only supports them from Node 18.11, and the scripts promise 18.3.
+    options: { dir: { type: "string" }, targets: { type: "string" }, "no-png": { type: "boolean" } }
   });
   if (!values.dir) {
     console.error("Missing --dir <folder with stats.json and copy.json>.");
     return 1;
   }
   const dir = path3.resolve(values.dir);
-  const targets = values.targets.split(",").map((s) => s.trim()).filter(Boolean);
+  const targets = (values.targets ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const unknown = targets.filter((x) => !TARGETS.includes(x));
   if (unknown.length) {
     console.error(`Unknown --targets: ${unknown.join(", ")} (use ${TARGETS.join(", ")})`);
@@ -979,8 +980,9 @@ async function main() {
   fs3.mkdirSync(cardsDir, { recursive: true });
   const written = [];
   const pngs = /* @__PURE__ */ new Set();
-  const browser = values["no-png"] || process.env.PROMPTFOLIO_BROWSER === "none" ? null : findBrowser({ platform: process.platform, env: process.env, exists: fs3.existsSync });
-  if (!browser && !values["no-png"]) console.log("No Chrome, Edge or Brave found: PNGs skipped, story.html still works.");
+  const noPng = values["no-png"] === true;
+  const browser = noPng || process.env.PROMPTFOLIO_BROWSER === "none" ? null : findBrowser({ platform: process.platform, env: process.env, exists: fs3.existsSync });
+  if (!browser && !noPng) console.log("No Chrome, Edge or Brave found: PNGs skipped, story.html still works.");
   for (const { slide, size } of shareCards(copy.vibe, targets)) {
     const html = cardDocument(slide, size, stats, copy, assetsDir);
     if (!html) continue;

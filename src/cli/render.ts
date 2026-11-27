@@ -16,11 +16,12 @@ const assetsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 
 
 async function main(): Promise<number> {
   const { values } = parseArgs({
-    options: { dir: { type: 'string' }, targets: { type: 'string', default: '' }, 'no-png': { type: 'boolean', default: false } },
+    // No `default:` options: parseArgs only supports them from Node 18.11, and the scripts promise 18.3.
+    options: { dir: { type: 'string' }, targets: { type: 'string' }, 'no-png': { type: 'boolean' } },
   });
   if (!values.dir) { console.error('Missing --dir <folder with stats.json and copy.json>.'); return 1; }
   const dir = path.resolve(values.dir);
-  const targets = values.targets.split(',').map(s => s.trim()).filter(Boolean) as Target[];
+  const targets = (values.targets ?? '').split(',').map(s => s.trim()).filter(Boolean) as Target[];
   const unknown = targets.filter(x => !TARGETS.includes(x));
   if (unknown.length) { console.error(`Unknown --targets: ${unknown.join(', ')} (use ${TARGETS.join(', ')})`); return 1; }
 
@@ -41,10 +42,11 @@ async function main(): Promise<number> {
   const written: string[] = [];
   const pngs = new Set<string>();
 
-  const browser = values['no-png'] || process.env.PROMPTFOLIO_BROWSER === 'none'
+  const noPng = values['no-png'] === true;
+  const browser = noPng || process.env.PROMPTFOLIO_BROWSER === 'none'
     ? null
     : findBrowser({ platform: process.platform, env: process.env, exists: fs.existsSync });
-  if (!browser && !values['no-png']) console.log('No Chrome, Edge or Brave found: PNGs skipped, story.html still works.');
+  if (!browser && !noPng) console.log('No Chrome, Edge or Brave found: PNGs skipped, story.html still works.');
 
   for (const { slide, size } of shareCards(copy.vibe, targets)) {
     const html = cardDocument(slide, size, stats, copy, assetsDir);
