@@ -43,28 +43,27 @@ function resolve(stats, path) {
   }
   return typeof v === "number" || typeof v === "string" ? v : void 0;
 }
-function format(path, value, language) {
+function format(path, value) {
   if (typeof value === "string") {
     if (path.endsWith(".month") && /^\d{4}-\d{2}$/.test(value)) {
       const [y, m] = value.split("-").map(Number);
-      return new Intl.DateTimeFormat(language === "nl" ? "nl-BE" : "en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
+      return new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
     }
     return value;
   }
   if (path.endsWith("Share") && value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
-  return new Intl.NumberFormat(language === "nl" ? "nl-BE" : "en-US", { maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value);
 }
-function fillPlaceholders(text, stats, language) {
+function fillPlaceholders(text, stats, _language = "en") {
   return text.replace(PLACEHOLDER_RE, (whole, path) => {
     const v = resolve(stats, path);
-    return v === void 0 ? whole : format(path, v, language);
+    return v === void 0 ? whole : format(path, v);
   });
 }
 var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 function validateCopy(copy, stats) {
   const errors = [];
   if (!isObj(copy)) return { ok: false, errors: ["copy: must be a JSON object"] };
-  const language = copy.language === "nl" ? "nl" : "en";
   const text = (path, value, limit) => {
     if (typeof value !== "string" || !value.trim()) {
       errors.push(`${path}: must be a non-empty string`);
@@ -75,11 +74,11 @@ function validateCopy(copy, stats) {
     }
     if (/\d/.test(value.replace(PLACEHOLDER_RE, ""))) errors.push(`${path}: contains a digit outside a placeholder; use a {placeholder}`);
     if (scanSecrets(value)) errors.push(`${path}: looks like it contains a secret or personal data`);
-    const filled = fillPlaceholders(value, stats, language);
+    const filled = fillPlaceholders(value, stats);
     if (filled.length > COPY_LIMITS[limit]) errors.push(`${path}: too long (${filled.length} > ${COPY_LIMITS[limit]} characters after filling)`);
   };
   if (copy.schemaVersion !== 2) errors.push("schemaVersion: must be 2");
-  if (copy.language !== "en" && copy.language !== "nl") errors.push('language: must be "en" or "nl"');
+  if (copy.language !== "en") errors.push('language: must be "en"');
   if (!["professional", "fun", "roast"].includes(copy.vibe)) errors.push('vibe: must be "professional", "fun" or "roast"');
   for (const k of RETIRED) if (k in copy) errors.push(`${k}: not used since copy v2`);
   text("title", copy.title, "title");

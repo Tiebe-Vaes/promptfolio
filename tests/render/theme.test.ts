@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from 'vitest';
-import { contrastRatio, fontFaceCss, LANGUAGE_COLORS, languageColor } from '../../src/render/theme.js';
+import { contrastRatio, fontFaceCss, LANGUAGE_COLORS, languageColor, PALETTE_IDS, PALETTES, paletteTheme } from '../../src/render/theme.js';
 
 const assets = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'plugins', 'promptfolio', 'skills', 'promptfolio', 'assets');
 
@@ -35,4 +35,15 @@ test('fontFaceCss embeds data URLs only', () => {
   expect(css).toContain('font-family: "IBM Plex Mono"');
   expect(css).toContain('data:font/woff2;base64,');
   expect(css).not.toMatch(/https?:/);
+});
+
+test('palettes: auto follows the top language, the rest are fixed', () => {
+  expect(PALETTE_IDS).toEqual(['auto', 'ink', 'grape', 'sunset']);
+  expect(paletteTheme('auto', 'TypeScript').accent).toBe('#3178C6');
+  expect(paletteTheme('ink', 'TypeScript').accent).toBe(PALETTES.ink);
+  expect(paletteTheme('grape', null).accent).toBe(PALETTES.grape);
+});
+
+test('every fixed palette reads on white at large-text contrast', () => {
+  for (const id of ['ink', 'grape', 'sunset'] as const) expect(contrastRatio(PALETTES[id], '#FFFFFF'), id).toBeGreaterThanOrEqual(3);
 });

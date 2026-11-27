@@ -48,6 +48,13 @@ test('readme only when picked', () => {
   expect(cardHtml(dir)).toEqual([]);
 });
 
+test('palette sets the accent', () => {
+  const dir = prepared();
+  expect(node('render', ['--dir', dir, '--cards', 'tokens', '--palette', 'grape'], noBrowser).status).toBe(0);
+  expect(fs.readFileSync(path.join(dir, 'cards', 'clean-tokens-story.html'), 'utf8')).toContain('--accent:#7048E8');
+  expect(node('render', ['--dir', dir, '--palette', 'neon'], noBrowser).status).toBe(1);
+});
+
 test('unknown style exits 1', () => {
   const r = node('render', ['--dir', prepared(), '--style', 'neon'], noBrowser);
   expect(r.status).toBe(1);

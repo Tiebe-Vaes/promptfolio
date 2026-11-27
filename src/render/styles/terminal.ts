@@ -38,7 +38,7 @@ const CSS = `
 .st-terminal .dots i { width: calc(var(--f) * .6); height: calc(var(--f) * .6); border-radius: 50%; background: #2E3743; }
 .st-terminal .p, .st-terminal .k { color: #8B97A7; }
 .st-terminal .p b, .st-terminal .v { color: #FFFFFF; font-weight: 600; }
-.st-terminal .hl { color: color-mix(in oklab, var(--accent) 60%, #FFFFFF); font-weight: 600; }
+.st-terminal .hl { color: color-mix(in oklab, var(--accent) 45%, #FFFFFF); font-weight: 600; }
 .st-terminal .body { display: flex; flex-direction: column; gap: calc(var(--f) * .7); margin: calc(var(--f) * .5) 0; min-height: 0; flex: 0 1 auto; overflow: hidden; }
 .st-terminal.size-wide .hero b { font-size: calc(var(--f) * 2); }
 .st-terminal.size-wide .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 2.4em; align-content: start; }
@@ -50,8 +50,9 @@ const CSS = `
 .st-terminal .cr { display: grid; grid-template-columns: 8.5em 1fr 4.5em; align-items: center; gap: .6em; }
 .st-terminal .cr .v:last-child { text-align: right; }
 .st-terminal .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.st-terminal .bar { display: block; height: .62em; border-radius: 2px; background: color-mix(in oklab, var(--accent) 45%, #2E3743); }
-.st-terminal .pk .bar, .st-terminal .cr:first-child .bar { background: color-mix(in oklab, var(--accent) 60%, #FFFFFF); }
+/* Mixed toward grey and white so every palette, Ink included, reads on the dark window. */
+.st-terminal .bar { display: block; height: .62em; border-radius: 2px; background: color-mix(in oklab, var(--accent) 45%, #8B97A7); }
+.st-terminal .pk .bar, .st-terminal .cr:first-child .bar { background: color-mix(in oklab, var(--accent) 40%, #FFFFFF); }
 .st-terminal .say { white-space: normal; }
 .st-terminal .repo { margin-top: auto; font-size: calc(var(--f) * .7); }
 .st-terminal .caret { display: inline-block; width: .55em; height: 1.1em; background: #D7DEE8; vertical-align: -.2em; animation: pf-blink 1.1s steps(1) infinite; }

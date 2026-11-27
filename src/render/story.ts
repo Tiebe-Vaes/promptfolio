@@ -4,20 +4,20 @@ import { t, type Lang } from './i18n.js';
 import { buildCard, CARD_IDS, type CardModel } from './model.js';
 import { page, PROGRESS_CSS } from './shell.js';
 import type { StyleId } from './styles/style.js';
-import { fontFaceCss } from './theme.js';
+import { fontFaceCss, type PaletteId } from './theme.js';
 
 /**
  * The tap-through story: every card that has data, in one style, one at a time, scaled to the window.
  * `pngs` lists the card files that exist (e.g. "cards/clean-tokens-story.png"); others get a screenshot hint.
  */
-export function buildStory(opts: { stats: Stats; copy: Copy; style: StyleId; assetsDir: string; pngs: Set<string> }): string {
+export function buildStory(opts: { stats: Stats; copy: Copy; style: StyleId; palette?: PaletteId; assetsDir: string; pngs: Set<string> }): string {
   const { stats, copy, style } = opts;
   const lang = copy.language as Lang;
   const s = t(lang);
   const models = CARD_IDS.map(id => buildCard(id, stats, copy)).filter((m): m is CardModel => m !== null);
   const css = new Set<string>([BASE_CSS, PROGRESS_CSS]);
   const slides = models.map((m, i) => {
-    const out = renderCard(style, m, styleCtx(stats, copy, 'story', { index: i, total: models.length, progress: true }));
+    const out = renderCard(style, m, styleCtx(stats, copy, 'story', { index: i, total: models.length, progress: true }, opts.palette));
     css.add(out.css);
     const png = `cards/${style}-${m.id}-story.png`;
     const action = opts.pngs.has(png)

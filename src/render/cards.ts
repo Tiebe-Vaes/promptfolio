@@ -7,7 +7,7 @@ import * as clean from './styles/clean.js';
 import * as receipt from './styles/receipt.js';
 import type { StyleCtx, StyleId, StyleOut } from './styles/style.js';
 import * as terminal from './styles/terminal.js';
-import { fontFaceCss, languageColor } from './theme.js';
+import { fontFaceCss, paletteTheme, type PaletteId } from './theme.js';
 
 export type CardFormat = 'story' | 'square' | 'wide';
 export const CARD_FORMATS: CardFormat[] = ['story', 'square', 'wide'];
@@ -24,15 +24,15 @@ export function renderCard(style: StyleId, model: CardModel, ctx: StyleCtx): Sty
   return STYLES[style](model, ctx);
 }
 
-export function styleCtx(stats: Stats, copy: Copy, size: SizeName, extra: Partial<StyleCtx> = {}): StyleCtx {
-  return { stats, lang: copy.language as Lang, theme: languageColor(stats.files.topLanguage), size: SIZES[size], index: 0, total: 1, ...extra };
+export function styleCtx(stats: Stats, copy: Copy, size: SizeName, extra: Partial<StyleCtx> = {}, palette: PaletteId = 'auto'): StyleCtx {
+  return { stats, lang: copy.language as Lang, theme: paletteTheme(palette, stats.files.topLanguage), size: SIZES[size], index: 0, total: 1, ...extra };
 }
 
 /** One card as its own HTML document at exact pixel size, ready for a screenshot. Null when the card has no data. */
-export function cardDocument(style: StyleId, id: CardId, format: CardFormat, stats: Stats, copy: Copy, assetsDir: string, picked: CardId[] = CARD_IDS): string | null {
+export function cardDocument(style: StyleId, id: CardId, format: CardFormat, stats: Stats, copy: Copy, assetsDir: string, picked: CardId[] = CARD_IDS, palette: PaletteId = 'auto'): string | null {
   const model = buildCard(id, stats, copy, picked);
   if (!model) return null;
-  const out = renderCard(style, model, styleCtx(stats, copy, format));
+  const out = renderCard(style, model, styleCtx(stats, copy, format, {}, palette));
   const { w, h } = SIZES[format];
   return page({
     title: `Promptfolio ${id}`,

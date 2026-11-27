@@ -130,28 +130,27 @@ function resolve(stats, path4) {
   }
   return typeof v === "number" || typeof v === "string" ? v : void 0;
 }
-function format(path4, value, language) {
+function format(path4, value) {
   if (typeof value === "string") {
     if (path4.endsWith(".month") && /^\d{4}-\d{2}$/.test(value)) {
       const [y, m] = value.split("-").map(Number);
-      return new Intl.DateTimeFormat(language === "nl" ? "nl-BE" : "en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
+      return new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
     }
     return value;
   }
   if (path4.endsWith("Share") && value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
-  return new Intl.NumberFormat(language === "nl" ? "nl-BE" : "en-US", { maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(value);
 }
-function fillPlaceholders(text, stats, language) {
+function fillPlaceholders(text, stats, _language = "en") {
   return text.replace(PLACEHOLDER_RE, (whole, path4) => {
     const v = resolve(stats, path4);
-    return v === void 0 ? whole : format(path4, v, language);
+    return v === void 0 ? whole : format(path4, v);
   });
 }
 var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 function validateCopy(copy, stats) {
   const errors = [];
   if (!isObj(copy)) return { ok: false, errors: ["copy: must be a JSON object"] };
-  const language = copy.language === "nl" ? "nl" : "en";
   const text = (path4, value, limit) => {
     if (typeof value !== "string" || !value.trim()) {
       errors.push(`${path4}: must be a non-empty string`);
@@ -162,11 +161,11 @@ function validateCopy(copy, stats) {
     }
     if (/\d/.test(value.replace(PLACEHOLDER_RE, ""))) errors.push(`${path4}: contains a digit outside a placeholder; use a {placeholder}`);
     if (scanSecrets(value)) errors.push(`${path4}: looks like it contains a secret or personal data`);
-    const filled = fillPlaceholders(value, stats, language);
+    const filled = fillPlaceholders(value, stats);
     if (filled.length > COPY_LIMITS[limit]) errors.push(`${path4}: too long (${filled.length} > ${COPY_LIMITS[limit]} characters after filling)`);
   };
   if (copy.schemaVersion !== 2) errors.push("schemaVersion: must be 2");
-  if (copy.language !== "en" && copy.language !== "nl") errors.push('language: must be "en" or "nl"');
+  if (copy.language !== "en") errors.push('language: must be "en"');
   if (!["professional", "fun", "roast"].includes(copy.vibe)) errors.push('vibe: must be "professional", "fun" or "roast"');
   for (const k of RETIRED) if (k in copy) errors.push(`${k}: not used since copy v2`);
   text("title", copy.title, "title");
@@ -203,13 +202,13 @@ var ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, (c) => ENTITIES[c]);
 }
-function fill(text, stats, lang) {
-  return escapeHtml(fillPlaceholders(text, stats, lang));
+function fill(text, stats, _lang = "en") {
+  return escapeHtml(fillPlaceholders(text, stats));
 }
-function num(n, lang, digits = 0) {
-  return new Intl.NumberFormat(lang === "nl" ? "nl-BE" : "en-US", { maximumFractionDigits: digits }).format(n);
+function num(n, _lang = "en", digits = 0) {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: digits }).format(n);
 }
-function compact(n, lang) {
+function compact(n, lang = "en") {
   const units = [[1e9, "B"], [1e6, "M"], [1e3, "K"]];
   for (const [v, u] of units) if (n >= v) return `${num(n / v, lang, n / v < 100 ? 1 : 0)}${u}`;
   return num(n, lang);
@@ -294,98 +293,20 @@ var STRINGS = {
       days: (n, f) => `${f} day${n === 1 ? "" : "s"}`,
       msgs: (f) => `${f} messages`
     }
-  },
-  nl: {
-    tokensRead: "tokens gelezen",
-    tokensWritten: "tokens geschreven",
-    activeDays: (n, f, from, to) => `${f} actieve dag${n === 1 ? "" : "en"}, ${from} tot ${to}`,
-    sessions: "Sessies",
-    messages: "Berichten",
-    bash: "Bash-commando's",
-    testRuns: "Testruns",
-    commits: "Commits",
-    please: '"alsjeblieft"',
-    noWait: '"nee wacht"',
-    apiValue: "API-waarde",
-    youPaid: "Jij betaalde",
-    aPlan: "een abonnement",
-    excludes: (n) => `zonder ${n} model${n === 1 ? "" : "len"} zonder prijs`,
-    apiNote: "Schatting aan Anthropic API-prijzen",
-    receiptThanks: "Bedankt om te bouwen.",
-    receiptYear: (y) => `Claude Code, jaar ${y}`,
-    busiestDay: "drukste dag",
-    streak: "langste reeks",
-    days: (n, f) => `${f} dag${n === 1 ? "" : "en"}`,
-    topLanguage: "toptaal",
-    topTools: "top tools",
-    verdict: "oordeel",
-    reading: (n, f) => `${f} dag${n === 1 ? "" : "en"} logs lezen...`,
-    done: "klaar",
-    msgs: "ber.",
-    level: "LV",
-    weakness: "Zwakte",
-    nemesis: "Aartsvijand",
-    rarity: { common: "Gewoon", rare: "Zeldzaam", legendary: "Legendarisch" },
-    classLine: (lang, n, f, y) => `${lang}-klasse. ${f} keer opgeroepen in ${y}.`,
-    since: (d) => `sinds ${d}`,
-    messagesPerMonth: "berichten per maand",
-    save: "Afbeelding opslaan",
-    screenshot: "Maak een screenshot van deze slide om te delen",
-    next: "Volgende",
-    previous: "Vorige",
-    card: {
-      tokens: "Tokens",
-      year: "Jaar in cijfers",
-      toolkit: "Toolkit",
-      growth: "Groei",
-      tokensYear: "tokens dit jaar",
-      written: "tokens geschreven",
-      favorite: "favoriete model",
-      energy: "energie",
-      water: "water",
-      glasses: (f) => `${f} glazen`,
-      estimate: "schatting",
-      apiNote: "schatting aan API-prijzen",
-      prompts: "Prompts",
-      slash: "Slash commands",
-      politeness: '"alsjeblieft" en "bedankt"',
-      toolCalls: "Toolcalls",
-      commits: "Commits",
-      webSearches: "Webzoekopdrachten",
-      subagents: "Subagents",
-      filesEdited: "Bestanden bewerkt",
-      apiValue: "API-waarde",
-      topTools: "top tools",
-      languages: "Talen",
-      topFirst: (l) => `${l} eerst`,
-      setup: "Eigen setup",
-      plugins: "Plugins",
-      skills: (n, f) => `${f} skill${n === 1 ? "" : "s"}`,
-      agents: (n, f) => `${f} agent${n === 1 ? "" : "s"}`,
-      hooks: (n, f) => `${f} hook${n === 1 ? "" : "s"}`,
-      busier: (from, to) => `drukker in ${to} dan in ${from}`,
-      messagesYear: "berichten dit jaar",
-      messages: "Berichten",
-      busiestMonth: "Drukste maand",
-      streak: "Langste reeks",
-      gap: "Langste pauze",
-      days: (n, f) => `${f} dag${n === 1 ? "" : "en"}`,
-      msgs: (f) => `${f} berichten`
-    }
   }
 };
 var t = (lang) => STRINGS[lang];
 function shortDate(date, lang) {
   const [y, m, d] = date.split("-").map(Number);
-  return new Intl.DateTimeFormat(lang === "nl" ? "nl-BE" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 function longMonth(month, lang) {
   const [y, m] = month.split("-").map(Number);
-  return new Intl.DateTimeFormat(lang === "nl" ? "nl-BE" : "en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
+  return new Intl.DateTimeFormat("en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
 }
 function shortMonth(month, lang) {
   const [y, m] = month.split("-").map(Number);
-  return new Intl.DateTimeFormat(lang === "nl" ? "nl-BE" : "en-US", { month: "short", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
+  return new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
 }
 
 // src/render/model.ts
@@ -606,6 +527,18 @@ function languageColor(lang) {
   const accent = lang && LANGUAGE_COLORS[lang] || FALLBACK;
   const onAccent = contrastRatio(accent, WHITE) >= contrastRatio(accent, INK) ? WHITE : INK;
   return { accent, deep: mix(accent, INK, 0.45), onAccent };
+}
+var PALETTE_IDS = ["auto", "ink", "grape", "sunset"];
+var PALETTES = {
+  ink: "#10151C",
+  grape: "#7048E8",
+  sunset: "#E8590C"
+};
+function paletteTheme(id, topLanguage) {
+  if (id === "auto") return languageColor(topLanguage);
+  const accent = PALETTES[id];
+  const onAccent = contrastRatio(accent, WHITE) >= contrastRatio(accent, INK) ? WHITE : INK;
+  return { accent, deep: id === "ink" ? INK : mix(accent, INK, 0.45), onAccent };
 }
 var FONT_FILES = [
   { family: "Archivo", file: "archivo-latin-wdth-normal.woff2", weight: "100 900", stretch: "62% 125%" },
@@ -860,7 +793,7 @@ function render4(m, ctx) {
     m.bars.length ? `<div class="chart">${m.bars.map((b) => `<div class="cr${b.peak ? " pk" : ""}"><span class="k">${b.label}</span>${bar(b.value / peak)}<span class="v">${num(b.value, ctx.lang)}</span></div>`).join("")}</div>` : "",
     m.tools.length ? `<div class="chart">${m.tools.slice(0, TOOLS2[ctx.size.name] ?? 10).map((x) => `<div class="cr"><span class="v name">${x.name}</span>${bar(x.share)}<span class="v">${x.count}</span></div>`).join("")}</div>` : "",
     m.items.length ? `<div class="rows">${m.items.map((i) => row(i.label, `${i.value}${i.note ? ` <span class="k">(${i.note})</span>` : ""}`)).join("")}</div>` : "",
-    m.sum ? row(m.sum.label, `${m.sum.value} <span class="k">(${m.sum.note})</span>`, "hl") : ""
+    m.sum ? `<div>${row(m.sum.label, m.sum.value, "hl")}<div class="k">(${m.sum.note})</div></div>` : ""
   ].join("");
   const inner = `<div class="win">
     <div class="dots"><i></i><i></i><i></i></div>
@@ -875,7 +808,7 @@ function render4(m, ctx) {
 }
 var CSS4 = `
 .st-terminal { --f: 36px; background: #0D1117; color: #D7DEE8; font: 400 var(--f)/1.5 "IBM Plex Mono", monospace; padding: 130px 60px 70px; }
-.st-terminal.size-square { --f: 25px; padding: 56px; }
+.st-terminal.size-square { --f: 23px; padding: 52px; }
 .st-terminal.size-wide { --f: 18px; padding: 36px 44px; }
 .st-terminal .win { border-radius: calc(var(--f) * .6); background: #161B22; border: 2px solid #262D37; padding: calc(var(--f) * 1.2) calc(var(--f) * 1.3); height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: calc(var(--f) * .5); }
 .st-terminal .dots { display: flex; gap: calc(var(--f) * .4); margin-bottom: calc(var(--f) * .5); }
@@ -886,6 +819,7 @@ var CSS4 = `
 .st-terminal .body { display: flex; flex-direction: column; gap: calc(var(--f) * .7); margin: calc(var(--f) * .5) 0; min-height: 0; flex: 0 1 auto; overflow: hidden; }
 .st-terminal.size-wide .hero b { font-size: calc(var(--f) * 2); }
 .st-terminal.size-wide .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 2.4em; align-content: start; }
+.st-terminal.size-wide .chart { grid-column: 2; grid-row: 1 / span 3; }
 .st-terminal .hero b { font-size: calc(var(--f) * 2.6); line-height: 1.05; color: #FFFFFF; }
 .st-terminal .row { display: flex; justify-content: space-between; gap: 1em; }
 .st-terminal .row .v, .st-terminal .row .hl { text-align: right; white-space: nowrap; }
@@ -915,13 +849,13 @@ var BASE_CSS = `
 function renderCard(style, model, ctx) {
   return STYLES[style](model, ctx);
 }
-function styleCtx(stats, copy, size, extra = {}) {
-  return { stats, lang: copy.language, theme: languageColor(stats.files.topLanguage), size: SIZES[size], index: 0, total: 1, ...extra };
+function styleCtx(stats, copy, size, extra = {}, palette = "auto") {
+  return { stats, lang: copy.language, theme: paletteTheme(palette, stats.files.topLanguage), size: SIZES[size], index: 0, total: 1, ...extra };
 }
-function cardDocument(style, id, format2, stats, copy, assetsDir2, picked = CARD_IDS) {
+function cardDocument(style, id, format2, stats, copy, assetsDir2, picked = CARD_IDS, palette = "auto") {
   const model = buildCard(id, stats, copy, picked);
   if (!model) return null;
-  const out = renderCard(style, model, styleCtx(stats, copy, format2));
+  const out = renderCard(style, model, styleCtx(stats, copy, format2, {}, palette));
   const { w, h } = SIZES[format2];
   return page({
     title: `Promptfolio ${id}`,
@@ -938,7 +872,7 @@ function readmeCard(opts) {
   const { stats } = opts;
   const lang = opts.copy.language;
   const s = t(lang);
-  const theme = languageColor(stats.files.topLanguage);
+  const theme = paletteTheme(opts.palette ?? "auto", stats.files.topLanguage);
   const months = stats.activity.byMonth;
   const max = Math.max(...months.map((m) => m.messages), 1);
   const x = (i) => 920 + i * (230 / Math.max(1, months.length - 1));
@@ -979,7 +913,7 @@ function buildStory(opts) {
   const models = CARD_IDS.map((id) => buildCard(id, stats, copy)).filter((m) => m !== null);
   const css = /* @__PURE__ */ new Set([BASE_CSS, PROGRESS_CSS]);
   const slides = models.map((m, i) => {
-    const out = renderCard(style, m, styleCtx(stats, copy, "story", { index: i, total: models.length, progress: true }));
+    const out = renderCard(style, m, styleCtx(stats, copy, "story", { index: i, total: models.length, progress: true }, opts.palette));
     css.add(out.css);
     const png = `cards/${style}-${m.id}-story.png`;
     const action = opts.pngs.has(png) ? `<a class="save" href="${png}" download>${s.save}</a>` : `<span class="hint">${s.screenshot}</span>`;
@@ -1061,7 +995,7 @@ function list(flag, value, allowed, fallback) {
 async function main() {
   const { values } = parseArgs({
     // No `default:` options: parseArgs only supports them from Node 18.11, and the scripts promise 18.3.
-    options: { dir: { type: "string" }, style: { type: "string" }, cards: { type: "string" }, formats: { type: "string" }, "no-png": { type: "boolean" } }
+    options: { dir: { type: "string" }, style: { type: "string" }, palette: { type: "string" }, cards: { type: "string" }, formats: { type: "string" }, "no-png": { type: "boolean" } }
   });
   if (!values.dir) {
     console.error("Missing --dir <folder with stats.json and copy.json>.");
@@ -1071,9 +1005,14 @@ async function main() {
   const style = list("style", values.style, STYLE_IDS, ["clean"]);
   const cards = list("cards", values.cards, CARD_IDS, CARD_IDS);
   const formats = list("formats", values.formats, FORMATS, ["story"]);
-  if (!style || !cards || !formats) return 1;
+  const palette = list("palette", values.palette, PALETTE_IDS, ["auto"]);
+  if (!style || !cards || !formats || !palette) return 1;
   if (style.length !== 1) {
     console.error(`Invalid --style: pick one of ${STYLE_IDS.join(", ")}`);
+    return 1;
+  }
+  if (palette.length !== 1) {
+    console.error(`Invalid --palette: pick one of ${PALETTE_IDS.join(", ")}`);
     return 1;
   }
   let stats;
@@ -1110,7 +1049,7 @@ async function main() {
   for (const card of cards) {
     for (const format2 of formats) {
       if (format2 === "readme") continue;
-      const html = cardDocument(style[0], card, format2, stats, copy, assetsDir, cards);
+      const html = cardDocument(style[0], card, format2, stats, copy, assetsDir, cards, palette[0]);
       if (!html) {
         if (format2 === formats.find((f) => f !== "readme")) console.log(`skipped ${card}: not enough data`);
         continue;
@@ -1121,7 +1060,7 @@ async function main() {
     }
   }
   if (formats.includes("readme")) {
-    const svg = readmeCard({ stats, copy, assetsDir });
+    const svg = readmeCard({ stats, copy, assetsDir, palette: palette[0] });
     const svgPath = path3.join(dir, "readme-card.svg");
     fs3.writeFileSync(svgPath, svg);
     written.push(svgPath);
@@ -1135,7 +1074,7 @@ async function main() {
   fs3.writeFileSync(captionsPath, JSON.stringify(buildCaptions(copy, stats), null, 2));
   const pngs = new Set(fs3.readdirSync(cardsDir).filter((f) => f.startsWith(`${style[0]}-`) && f.endsWith("-story.png")).map((f) => `cards/${f}`));
   const storyPath = path3.join(dir, "story.html");
-  fs3.writeFileSync(storyPath, buildStory({ stats, copy, style: style[0], assetsDir, pngs }));
+  fs3.writeFileSync(storyPath, buildStory({ stats, copy, style: style[0], palette: palette[0], assetsDir, pngs }));
   for (const f of [storyPath, ...written, captionsPath]) console.log(f);
   return 0;
 }

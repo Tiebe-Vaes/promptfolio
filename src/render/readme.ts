@@ -2,17 +2,17 @@ import type { Copy, Stats } from '../types.js';
 import { REPO } from './brand.js';
 import { compact, escapeHtml, num } from './escape.js';
 import { t, type Lang } from './i18n.js';
-import { fontFaceCss, languageColor } from './theme.js';
+import { fontFaceCss, paletteTheme, type PaletteId } from './theme.js';
 
 /**
  * A 1200x400 SVG for a GitHub profile README. Fonts are embedded; GitHub shows SVGs through <img>,
  * so CSS animation works but scripts and external files do not. The line draws in once, unless reduced motion.
  */
-export function readmeCard(opts: { stats: Stats; copy: Copy; assetsDir: string }): string {
+export function readmeCard(opts: { stats: Stats; copy: Copy; assetsDir: string; palette?: PaletteId }): string {
   const { stats } = opts;
   const lang = opts.copy.language as Lang;
   const s = t(lang);
-  const theme = languageColor(stats.files.topLanguage);
+  const theme = paletteTheme(opts.palette ?? 'auto', stats.files.topLanguage);
   const months = stats.activity.byMonth;
   const max = Math.max(...months.map(m => m.messages), 1);
   const x = (i: number) => 920 + i * (230 / Math.max(1, months.length - 1));

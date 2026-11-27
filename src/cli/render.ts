@@ -11,6 +11,7 @@ import { readmeCard } from '../render/readme.js';
 import { SIZES } from '../render/shell.js';
 import { buildStory } from '../render/story.js';
 import { STYLE_IDS, type StyleId } from '../render/styles/style.js';
+import { PALETTE_IDS, type PaletteId } from '../render/theme.js';
 import type { Copy, Stats } from '../types.js';
 
 type Format = CardFormat | 'readme';
@@ -33,15 +34,17 @@ function list<T extends string>(flag: string, value: string | undefined, allowed
 async function main(): Promise<number> {
   const { values } = parseArgs({
     // No `default:` options: parseArgs only supports them from Node 18.11, and the scripts promise 18.3.
-    options: { dir: { type: 'string' }, style: { type: 'string' }, cards: { type: 'string' }, formats: { type: 'string' }, 'no-png': { type: 'boolean' } },
+    options: { dir: { type: 'string' }, style: { type: 'string' }, palette: { type: 'string' }, cards: { type: 'string' }, formats: { type: 'string' }, 'no-png': { type: 'boolean' } },
   });
   if (!values.dir) { console.error('Missing --dir <folder with stats.json and copy.json>.'); return 1; }
   const dir = path.resolve(values.dir);
   const style = list<StyleId>('style', values.style, STYLE_IDS, ['clean']);
   const cards = list<CardId>('cards', values.cards, CARD_IDS, CARD_IDS);
   const formats = list<Format>('formats', values.formats, FORMATS, ['story']);
-  if (!style || !cards || !formats) return 1;
+  const palette = list<PaletteId>('palette', values.palette, PALETTE_IDS, ['auto']);
+  if (!style || !cards || !formats || !palette) return 1;
   if (style.length !== 1) { console.error(`Invalid --style: pick one of ${STYLE_IDS.join(', ')}`); return 1; }
+  if (palette.length !== 1) { console.error(`Invalid --palette: pick one of ${PALETTE_IDS.join(', ')}`); return 1; }
 
   let stats: Stats;
   let copy: Copy;
@@ -80,7 +83,7 @@ async function main(): Promise<number> {
   for (const card of cards) {
     for (const format of formats) {
       if (format === 'readme') continue;
-      const html = cardDocument(style[0], card, format, stats, copy, assetsDir, cards);
+      const html = cardDocument(style[0], card, format, stats, copy, assetsDir, cards, palette[0]);
       if (!html) { if (format === formats.find(f => f !== 'readme')) console.log(`skipped ${card}: not enough data`); continue; }
       const htmlPath = path.join(cardsDir, `${style[0]}-${card}-${format}.html`);
       fs.writeFileSync(htmlPath, html);
@@ -89,7 +92,7 @@ async function main(): Promise<number> {
   }
 
   if (formats.includes('readme')) {
-    const svg = readmeCard({ stats, copy, assetsDir });
+    const svg = readmeCard({ stats, copy, assetsDir, palette: palette[0] });
     const svgPath = path.join(dir, 'readme-card.svg');
     fs.writeFileSync(svgPath, svg);
     written.push(svgPath);
@@ -105,7 +108,7 @@ async function main(): Promise<number> {
   // Earlier runs count too, other styles never do: the story links the PNGs of this style that exist on disk.
   const pngs = new Set(fs.readdirSync(cardsDir).filter(f => f.startsWith(`${style[0]}-`) && f.endsWith('-story.png')).map(f => `cards/${f}`));
   const storyPath = path.join(dir, 'story.html');
-  fs.writeFileSync(storyPath, buildStory({ stats, copy, style: style[0], assetsDir, pngs }));
+  fs.writeFileSync(storyPath, buildStory({ stats, copy, style: style[0], palette: palette[0], assetsDir, pngs }));
   for (const f of [storyPath, ...written, captionsPath]) console.log(f);
   return 0;
 }

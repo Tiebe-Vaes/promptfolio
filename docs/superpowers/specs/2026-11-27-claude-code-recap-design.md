@@ -107,6 +107,7 @@ All questions use Claude Code's own question picker (AskUserQuestion), so the fl
    2. Tone (single): Professional / Fun / Roast me.
    3. Formats (multi): Story 9:16 / Square 1:1 / Wide 16:9 / GitHub README 3:1.
    4. Cards (multi): Tokens / Year in numbers / Toolkit / Growth, each described in one line with the user's numbers.
+   Then one more question (the screen holds only four): Colour (single): Match my language (auto) / Ink / Grape / Sunset. Make it now uses auto.
    Everything is in English. The year is the current one; only in January or February does the skill ask whether the user means last year.
 5. Claude reads `stats.json` plus the redacted sample and writes `copy.json`; validate; on failure fix and rerun.
 6. Render only the picked cards and formats, plus `story.html` → output folder. Tell the user the PNG time first (about 10 s each).
@@ -190,6 +191,7 @@ Decided by Tiebe after three mockup rounds (`design/mockups/round-2.html`, `roun
 
 - **One style for all four cards.** The four v0.2 slide looks become styles: Clean (from the data artwork slide: big Archivo numbers, white, accent colour), Receipt (IBM Plex Mono slip with barcode), Terminal (dark terminal window, Plex Mono), Trading card (framed card with the generated creature, level and rarity; the four cards read as a booster pack, "1/4" to "4/4"). All four ship in v0.3.
 - **Formats:** Story 1080x1920, Square 1080x1080, Wide 1200x675, README 1200x400. The 4:5 feed size is dropped (Square covers feeds; the picker allows only 4 options). Discord has no documented image size; Wide is the assumption, checked on a real message before release.
+- **Colour palettes** (added 2026-11-27, decided by Tiebe): Match my language (the top language's GitHub colour, the v0.2 behaviour), Ink `#10151C`, Grape `#7048E8`, Sunset `#E8590C`. A palette sets the accent; the deep shade is mixed from it. Each fixed accent reads on white at 3:1 or more.
 - **Repo link** on every card and the README card, small, in the style's own body font, never as the eye-catcher.
 - All earlier "Never" rules still hold. Monospace is allowed only in the Receipt and Terminal styles.
 

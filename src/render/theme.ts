@@ -56,6 +56,25 @@ export function languageColor(lang: string | null): { accent: string; deep: stri
   return { accent, deep: mix(accent, INK, 0.45), onAccent };
 }
 
+export type PaletteId = 'auto' | 'ink' | 'grape' | 'sunset';
+export const PALETTE_IDS: PaletteId[] = ['auto', 'ink', 'grape', 'sunset'];
+
+/** Fixed accents the user can pick instead of their top language's colour. Each reads on white at 3:1 or more. */
+export const PALETTES: Record<Exclude<PaletteId, 'auto'>, string> = {
+  ink: '#10151C',
+  grape: '#7048E8',
+  sunset: '#E8590C',
+};
+
+/** The card theme for a palette; `auto` follows the top language. */
+export function paletteTheme(id: PaletteId, topLanguage: string | null): ReturnType<typeof languageColor> {
+  if (id === 'auto') return languageColor(topLanguage);
+  const accent = PALETTES[id];
+  const onAccent = contrastRatio(accent, WHITE) >= contrastRatio(accent, INK) ? WHITE : INK;
+  // Ink is already the darkest tone, so its deep shade is the ink itself.
+  return { accent, deep: id === 'ink' ? INK : mix(accent, INK, 0.45), onAccent };
+}
+
 const FONT_FILES: { family: string; file: string; weight: string; stretch?: string }[] = [
   { family: 'Archivo', file: 'archivo-latin-wdth-normal.woff2', weight: '100 900', stretch: '62% 125%' },
   { family: '"IBM Plex Mono"', file: 'ibm-plex-mono-latin-400-normal.woff2', weight: '400' },
