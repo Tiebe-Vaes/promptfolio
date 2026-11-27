@@ -3,6 +3,7 @@ import { REPO } from '../../src/render/brand.js';
 import { buildCard, CARD_IDS, type CardModel } from '../../src/render/model.js';
 import { SIZES, type SizeName } from '../../src/render/shell.js';
 import * as clean from '../../src/render/styles/clean.js';
+import * as receipt from '../../src/render/styles/receipt.js';
 import type { StyleCtx, StyleId } from '../../src/render/styles/style.js';
 import { languageColor } from '../../src/render/theme.js';
 import type { Copy, Stats } from '../../src/types.js';
@@ -11,6 +12,7 @@ import { assertDesignRules } from './rules.js';
 
 const STYLES: Partial<Record<StyleId, { render: (m: CardModel, c: StyleCtx) => { css: string; html: string }; mono: boolean }>> = {
   clean: { render: clean.render, mono: false },
+  receipt: { render: receipt.render, mono: true },
 };
 const FORMATS: SizeName[] = ['story', 'square', 'wide'];
 
@@ -40,3 +42,10 @@ for (const [style, def] of Object.entries(STYLES)) {
     });
   });
 }
+
+test('receipt barcode has one bar per day in range', () => {
+  const d = stats.activity.daily;
+  const days = Math.round((Date.parse(d.at(-1)!.date) - Date.parse(d[0].date)) / 86_400_000) + 1;
+  const html = receipt.render(buildCard('year', stats, proCopy)!, sctx('story')).html;
+  expect(html.match(/class="bar"/g)!.length).toBe(days);
+});
