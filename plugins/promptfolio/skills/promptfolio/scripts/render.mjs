@@ -891,6 +891,9 @@ function buildStory(opts) {
   });
 }
 var VIEWER_CSS = `
+/* A safe scale before the script runs, so phones never widen their layout to the 1080px slide. */
+:root { --k: 0.3; }
+html, body { overflow-x: hidden; }
 body { background: #0B0D10; min-height: 100vh; font-family: "Libre Franklin", sans-serif; }
 .viewer { position: relative; min-height: 100vh; display: grid; place-items: center; }
 .frame { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 14px; }
@@ -909,7 +912,8 @@ var VIEWER_JS = `
   var i = 0, paused = false, timer = null;
   var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function fit() {
-    var k = Math.min((window.innerWidth - 32) / 1080, (window.innerHeight - 72) / 1920);
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var k = Math.min((vw - 32) / 1080, (vh - 72) / 1920);
     document.documentElement.style.setProperty('--k', String(Math.max(0.1, k)));
   }
   function show(n) {

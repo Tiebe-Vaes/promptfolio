@@ -68,3 +68,9 @@ test('shareCards per target', () => {
   expect(shareCards('roast', ['x', 'discord'])).toEqual([{ slide: 'card', size: 'landscape' }, { slide: 'receipt', size: 'feed' }]);
   expect(shareCards('fun', [])).toEqual([{ slide: 'receipt', size: 'feed' }]);
 });
+
+test('story is phone-safe before its script runs', () => {
+  const html = buildStory({ stats, copy: funCopy, assetsDir, pngs: new Set() });
+  expect(html).toMatch(/:root\s*\{\s*--k:\s*0\.3\d*;/);
+  expect(html).toMatch(/overflow-x:\s*hidden/);
+});
