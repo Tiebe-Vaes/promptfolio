@@ -19,12 +19,25 @@ const proCopy: Copy = {
       { id: 'range', text: 'Range: {files.byLanguage.length} languages' },
     ],
   },
+  tokensLine: 'Claude reread your code {tokens.readPerWritten} times per token it wrote.',
+  verdict: 'You trust tests more than vibes.',
+  growthLine: 'Busiest in {activity.growth.peak.month}',
   captions: { year: 'Your year in prompts' },
 };
 
 const funCopy: Copy = {
   schemaVersion: 1, vibe: 'fun', language: 'en',
-  persona: { className: 'Shell Warlock', specialMove: 'git commit at dawn', weakness: 'Saying sorry to a robot', nemesis: 'api_error' },
+  persona: {
+    className: 'Shell Warlock', specialMove: 'git commit at dawn', weakness: 'Saying sorry to a robot', nemesis: 'api_error',
+    moves: [
+      { name: 'Bash Barrage', value: '{tools.bash}', text: 'Hits the shell until it compiles.' },
+      { name: 'Watch It Fail', value: '{tools.testRuns}', text: 'Runs the tests before trusting anything.' },
+      { name: 'Ship at Dawn', value: '{tools.commits}', text: 'Commits, mostly before lunch.' },
+    ],
+  },
+  tokensLine: 'Claude reread your code {tokens.readPerWritten} times per token it wrote.',
+  verdict: 'You trust tests more than vibes.',
+  receiptFooter: 'No refunds on tokens.',
   diary: ['He asked for a plan. Then he asked again.', 'We ran the tests. They ran back.', 'Another compaction. I forgot everything.'],
   awards: [
     { title: 'Most Polite', text: '{prompts.politeness} times please or thanks' },
@@ -98,4 +111,34 @@ test('fillPlaceholders formats per language', () => {
   expect(fillPlaceholders('{tools.testRuns} tests', merge(stats, { tools: { testRuns: 1234 } }), 'en')).toBe('1,234 tests');
   expect(fillPlaceholders('{modes.planShare}', merge(stats, { modes: { planShare: 0.38 } }), 'en')).toBe('38%');
   expect(fillPlaceholders('{files.byLanguage.length} languages', stats, 'en')).toBe('2 languages');
+});
+
+test('move value must be exactly one placeholder', () => {
+  const bad = withPath(funCopy, 'persona.moves.0.value', 'about {tools.bash}');
+  expect(validateCopy(bad, stats).errors.join()).toMatch(/persona.moves.0.value/);
+  expect(validateCopy(withPath(funCopy, 'persona.moves.0.value', '{tooling}'), stats).ok).toBe(false);
+});
+
+test('fun needs 3 moves, a receipt footer, a verdict and a tokens line', () => {
+  expect(validateCopy(withPath(funCopy, 'persona.moves', funCopy.persona!.moves!.slice(0, 2)), stats).ok).toBe(false);
+  expect(validateCopy(withPath(funCopy, 'receiptFooter', undefined), stats).ok).toBe(false);
+  expect(validateCopy(withPath(funCopy, 'verdict', undefined), stats).ok).toBe(false);
+  expect(validateCopy(withPath(funCopy, 'tokensLine', undefined), stats).ok).toBe(false);
+});
+
+test('professional needs growthLine when growth exists', () => {
+  expect(validateCopy(withPath(proCopy, 'growthLine', undefined), stats).ok).toBe(false);
+  const noGrowth = merge(stats, { activity: { growth: null } });
+  expect(validateCopy(withPath(proCopy, 'growthLine', undefined), noGrowth).ok).toBe(true);
+});
+
+test('month placeholder renders as a name', () => {
+  expect(fillPlaceholders('{activity.growth.peak.month}', stats, 'en')).toBe('March');
+  expect(fillPlaceholders('{activity.growth.peak.month}', stats, 'nl')).toBe('maart');
+});
+
+test('limits match card widths', () => {
+  expect(COPY_LIMITS.className).toBe(22);
+  expect(COPY_LIMITS.moveName).toBe(22);
+  expect(COPY_LIMITS.growthLine).toBe(40);
 });

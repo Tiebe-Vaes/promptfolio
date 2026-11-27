@@ -40,7 +40,19 @@ export interface Copy {
   vibe: 'professional' | 'fun' | 'roast';
   language: 'en' | 'nl';
   profile?: { headline: string; strengths: { id: StrengthId; text: string }[] };
-  persona?: { className: string; specialMove: string; weakness: string; nemesis: string };
+  persona?: {
+    className: string; specialMove: string; weakness: string; nemesis: string;
+    /** Exactly 3 card moves; value is one {placeholder} that resolves to a number. */
+    moves?: { name: string; value: string; text: string }[];
+  };
+  /** One sentence under the token pair. */
+  tokensLine?: string;
+  /** Receipt footer for fun and roast. */
+  receiptFooter?: string;
+  /** Last line of the terminal replay. */
+  verdict?: string;
+  /** Professional closer heading. */
+  growthLine?: string;
   diary?: string[];
   awards?: { title: string; text: string }[];
   relationship?: { status: string; text: string };

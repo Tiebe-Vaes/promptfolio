@@ -45,5 +45,5 @@ jobs:
           node $S/doctor.mjs --projects
           node $S/stats.mjs --claude-dir tests/fixtures/claude-home --year 2026 --tz UTC --out out
           test -s out/stats.json && test -s out/sample.json
-          echo '{"schemaVersion":1,"vibe":"fun","language":"en","persona":{"className":"a","specialMove":"b","weakness":"c","nemesis":"d"},"diary":["a","b","c"],"awards":[{"title":"a","text":"b"},{"title":"c","text":"d"},{"title":"e","text":"f"}],"relationship":{"status":"a","text":"b"},"captions":{}}' > out/copy.json
+          echo '{"schemaVersion":1,"vibe":"fun","language":"en","persona":{"className":"a","specialMove":"b","weakness":"c","nemesis":"d","moves":[{"name":"a","value":"{tools.bash}","text":"b"},{"name":"c","value":"{tools.commits}","text":"d"},{"name":"e","value":"{tools.testRuns}","text":"f"}]},"tokensLine":"Tokens.","verdict":"Fine.","receiptFooter":"Thanks.","diary":["a","b","c"],"awards":[{"title":"a","text":"b"},{"title":"c","text":"d"},{"title":"e","text":"f"}],"relationship":{"status":"a","text":"b"},"captions":{}}' > out/copy.json
           node $S/validate.mjs out/copy.json out/stats.json

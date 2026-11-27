@@ -35,16 +35,24 @@ Shape:
   "vibe": "professional | fun | roast",
   "language": "en | nl",
   "profile": { "headline": "", "strengths": [{ "id": "", "text": "" }] },
-  "persona": { "className": "", "specialMove": "", "weakness": "", "nemesis": "" },
+  "persona": {
+    "className": "", "specialMove": "", "weakness": "", "nemesis": "",
+    "moves": [{ "name": "", "value": "{tools.bash}", "text": "" }]
+  },
   "diary": [""],
   "awards": [{ "title": "", "text": "" }],
   "relationship": { "status": "", "text": "" },
+  "tokensLine": "",
+  "verdict": "",
+  "receiptFooter": "",
+  "growthLine": "",
   "captions": {}
 }
 ```
 
-- **professional** fills `profile`: a headline and exactly 3 strengths whose `id`s come from `stats.strengthCandidates` (prefer the highest `score`). Each strength states the habit and its number factually, e.g. "Reviewed and blocked {denials.userRejected} tool calls".
-- **fun** and **roast** fill `persona`, 3-5 `diary` entries (Claude's diary about the user, first person), 3-4 `awards` and `relationship`. Fun teases lightly; roast is honest and can sting, still about habits, never about the person's worth.
+- **Every vibe** fills `tokensLine` (one sentence under "tokens read / tokens written", e.g. "Claude reread your code {tokens.readPerWritten} times for every token it wrote back.") and `verdict` (the last line of the terminal replay, a short judgement of how the user works).
+- **professional** fills `profile`: a headline and exactly 3 strengths whose `id`s come from `stats.strengthCandidates` (prefer the highest `score`). Each strength states the habit and its number factually, e.g. "Reviewed and blocked {denials.userRejected} tool calls". When `stats.activity.growth` exists, also fill `growthLine`, the closer heading, e.g. "{activity.growth.factor} times busier by {activity.growth.peak.month}" (month placeholders print as month names).
+- **fun** and **roast** fill `persona` with a class name (it becomes the trading card's title) and exactly 3 `moves`: each has a short name, a `value` that is one number placeholder (pick tools, tests, commits, searches: whatever is highest for this user) and a one-line description. Also 3-5 `diary` entries (Claude's diary about the user, first person), 3-4 `awards`, `relationship` and `receiptFooter` (one closing line printed at the bottom of the receipt). Fun teases lightly; roast is honest and can sting, still about habits, never about the person's worth.
 - **Numbers only as placeholders.** Every number is a `{dotted.path}` from `sample.json` `placeholders`. Digits typed into text fail validation.
 - **Specific.** Every line points at something real in the data: a top tool, a language, a late-night share, a session title from `sample.json` `vibeHints`. A line that would fit any user gets rewritten.
 - **Honest comparisons.** Compare the user only with their own data (months, habits). Rankings against other users stay out, since there is no data on other users.

@@ -1,11 +1,11 @@
 import { scanSecrets } from './redact.js';
 import type { Stats } from './types.js';
 
-/** Max characters after filling placeholders. Provisional until the mockup round (Plan 2). */
+/** Max characters after filling placeholders, sized to the round 2 card layouts. */
 export const COPY_LIMITS = {
   headline: 60,
   strength: 90,
-  className: 28,
+  className: 22,
   specialMove: 40,
   weakness: 40,
   nemesis: 32,
@@ -15,6 +15,12 @@ export const COPY_LIMITS = {
   relationshipStatus: 24,
   relationshipText: 140,
   caption: 120,
+  tokensLine: 90,
+  moveName: 22,
+  moveText: 60,
+  receiptFooter: 60,
+  verdict: 70,
+  growthLine: 40,
 } as const;
 
 type LimitKey = keyof typeof COPY_LIMITS;
@@ -34,7 +40,13 @@ function resolve(stats: Stats, path: string): number | string | undefined {
 }
 
 function format(path: string, value: number | string, language: 'en' | 'nl'): string {
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') {
+    if (path.endsWith('.month') && /^\d{4}-\d{2}$/.test(value)) {
+      const [y, m] = value.split('-').map(Number);
+      return new Intl.DateTimeFormat(language === 'nl' ? 'nl-BE' : 'en-US', { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, 15)));
+    }
+    return value;
+  }
   if (path.endsWith('Share') && value >= 0 && value <= 1) return `${Math.round(value * 100)}%`;
   return new Intl.NumberFormat(language === 'nl' ? 'nl-BE' : 'en-US', { maximumFractionDigits: 1 }).format(value);
 }
@@ -95,7 +107,12 @@ export function validateCopy(copy: unknown, stats: Stats): { ok: boolean; errors
     }
   }
 
+  text('tokensLine', copy.tokensLine, 'tokensLine');
+  text('verdict', copy.verdict, 'verdict');
+  if (copy.vibe === 'professional' && stats.activity.growth) text('growthLine', copy.growthLine, 'growthLine');
+
   if (copy.vibe === 'fun' || copy.vibe === 'roast') {
+    text('receiptFooter', copy.receiptFooter, 'receiptFooter');
     const p = copy.persona;
     if (!isObj(p)) errors.push('persona: required for the fun and roast vibes');
     else {
@@ -103,6 +120,13 @@ export function validateCopy(copy: unknown, stats: Stats): { ok: boolean; errors
       text('persona.specialMove', p.specialMove, 'specialMove');
       text('persona.weakness', p.weakness, 'weakness');
       text('persona.nemesis', p.nemesis, 'nemesis');
+      list('persona.moves', p.moves, 3, 3).forEach((mv, i) => {
+        const m = isObj(mv) ? mv : {};
+        text(`persona.moves.${i}.name`, m.name, 'moveName');
+        text(`persona.moves.${i}.text`, m.text, 'moveText');
+        const value = typeof m.value === 'string' ? m.value.match(/^\{([A-Za-z0-9_.]+)\}$/) : null;
+        if (!value || typeof resolve(stats, value[1]) !== 'number') errors.push(`persona.moves.${i}.value: must be exactly one {placeholder} that resolves to a number`);
+      });
     }
     list('diary', copy.diary, 3, 5).forEach((d, i) => text(`diary.${i}`, d, 'diary'));
     list('awards', copy.awards, 3, 4).forEach((a, i) => {
