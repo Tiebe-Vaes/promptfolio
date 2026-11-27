@@ -158,6 +158,18 @@ A fixed list of measurable habits. Claude picks the user's top 3 and words them 
 - **Product name: Promptfolio** (decided by Tiebe), used for the repo, npm name, install command, marketplace id, skill folder and `/promptfolio` command from the start. The current folder name "Claude-wrapped" is local only and is never published.
 - **Privacy notice** (decided by Tiebe): README and onboarding say plainly: "The scripts upload nothing. Claude reads redacted stats in your own session to write the text."
 
+## Visual decisions (mockup rounds, 2026-11-27)
+
+Decided by Tiebe after three mockup rounds (`design/mockups/round-2.html`, `round-3-visualizers.html`), checked against `docs/research/2026-11-27-ai-design-tells.md`:
+
+- **Formats in v0.2:** data artwork (token pair + year heatmap), receipt, terminal session, trading card, and a growth closer for Professional (messages per month as one line, headline like "29 times busier by October"). The hour clock, nutrition label and language stack are out.
+- **Token slide:** both numbers as a pair, "tokens read" (all tokens including cache) and "tokens written" (output), with a line saying how many tokens Claude reread per token it wrote.
+- **API value:** shown on the receipt as a labelled estimate at Anthropic's published API prices, next to "You paid: a plan".
+- **Accent colour:** the user's top language's GitHub colour (TypeScript #3178C6, Python #3572A5, Java #B07219, ...), not a fixed brand colour.
+- **Type:** Archivo (variable width) for numbers and headings, IBM Plex Mono only on the receipt and terminal, Big Shoulders Display for the card name, Libre Franklin for body text. All OFL fonts, embedded.
+- **Never:** eyebrow labels, "01 / 07" counters (stories use an Instagram-style progress bar), gradient text, glow, middle-dot strings, one accented word in a heading, monospace for decoration, cream + terracotta, near-black + single neon accent.
+- **Generated art:** heatmap, growth line, receipt barcode and the trading-card creature are drawn from the user's own data, so every recap differs.
+
 ## Left to the builder
 
 File and folder layout, the regexes for test runners and secrets, exact JSON schemas for `stats.json` and `copy.json`, CLI flags of the scripts, the browser path lists, the level formula, font choice inside the visual style, and the README SVG technique (CSS-animated SVG with an embedded font if GitHub renders it, else a static SVG or PNG).
