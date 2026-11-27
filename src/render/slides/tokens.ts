@@ -23,13 +23,19 @@ export function render(ctx: SlideCtx): SlideOut {
 
   const cells: string[] = [];
   const months: string[] = [];
+  let lastLabel = -Infinity;
   for (let w = 0; w < weeks; w++) {
     for (let d = 0; d < 7; d++) {
       const date = iso(start + (w * 7 + d) * DAY);
       const v = byDate.get(date) ?? 0;
       const pct = v ? Math.round(18 + 82 * Math.sqrt(v / max)) : 0;
       cells.push(`<i class="cell" style="grid-column:${w + 1};grid-row:${d + 1}${v ? `;background:color-mix(in oklab, var(--accent) ${pct}%, #EEF1F5)` : ''}"></i>`);
-      if (date.endsWith('-01') || (w === 0 && d === 0)) months.push(`<span style="left:${w * (cell + 5)}px">${shortMonth(date.slice(0, 7), lang)}</span>`);
+      const left = w * (cell + 5);
+      // Label each month at its first day; skip a label that would sit on top of the previous one.
+      if ((date.endsWith('-01') || (w === 0 && d === 0)) && left - lastLabel >= 60) {
+        months.push(`<span style="left:${left}px">${shortMonth(date.slice(0, 7), lang)}</span>`);
+        lastLabel = left;
+      }
     }
   }
 

@@ -14,7 +14,7 @@ export function readmeCard(opts: { stats: Stats; copy: Copy; assetsDir: string }
   const theme = languageColor(stats.files.topLanguage);
   const months = stats.activity.byMonth;
   const max = Math.max(...months.map(m => m.messages), 1);
-  const x = (i: number) => 760 + i * (380 / Math.max(1, months.length - 1));
+  const x = (i: number) => 920 + i * (230 / Math.max(1, months.length - 1));
   const y = (v: number) => 330 - 220 * (v / max);
   const line = months.length > 1 ? 'M' + months.map((m, i) => `${x(i).toFixed(1)} ${y(m.messages).toFixed(1)}`).join(' L') : '';
   const stat = (label: string, value: string, sx: number) =>

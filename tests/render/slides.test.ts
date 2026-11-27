@@ -59,3 +59,17 @@ test('copy is escaped', () => {
   const evil = { ...funCopy, verdict: '<img src=x onerror=alert(1)>' };
   expect(terminal.render(ctx(stats, evil))!.html).not.toContain('<img');
 });
+
+test('tokens: month labels never collide', () => {
+  const html = tokens.render(ctx(merge(stats, { activity: { daily: [
+    { date: '2026-04-21', messages: 5 }, { date: '2026-05-02', messages: 9 }, { date: '2026-11-20', messages: 3 },
+  ] } }), funCopy))!.html;
+  const lefts = [...html.matchAll(/<span style="left:(\d+)px">/g)].map(m => Number(m[1]));
+  for (let i = 1; i < lefts.length; i++) expect(lefts[i] - lefts[i - 1]).toBeGreaterThanOrEqual(60);
+});
+
+test('terminal: long tool names are shortened, MCP tools get a readable name', () => {
+  const html = terminal.render(ctx(merge(stats, { tools: { top: [{ name: 'mcp:Claude_Browser', count: 9 }, { name: 'Bash', count: 3 }] } }), funCopy))!.html;
+  expect(html).toContain('>Claude Browser<');
+  expect(html).not.toContain('mcp:');
+});

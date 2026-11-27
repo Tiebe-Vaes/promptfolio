@@ -537,10 +537,10 @@ var CSS = `
 .s-card .move span { font-size: 54px; font-weight: 900; color: var(--deep); }
 .s-card .move p { grid-column: 1 / -1; margin: 6px 0 0; font-size: 30px; color: #4B5563; }
 .s-card .bottom { margin-top: auto; display: flex; justify-content: space-between; gap: 16px; font-size: 26px; line-height: 1.3; color: #4B5563; border-top: 3px solid #D5DAE1; padding-top: 16px; }
-.s-card.size-feed .card { transform: rotate(1.2deg) scale(.98); }
-.s-card.size-landscape .stage { right: auto; width: 520px; }
-.s-card.size-landscape .card { transform: rotate(1.2deg) scale(.48); }
-.s-card .side { position: absolute; left: 560px; right: 64px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; color: #10151C; }
+.s-card.size-feed .card { zoom: .98; }
+.s-card.size-landscape .stage { right: auto; width: 540px; }
+.s-card.size-landscape .card { zoom: .48; }
+.s-card .side { position: absolute; left: 580px; right: 64px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; color: #10151C; }
 .s-card .sname { font: 900 104px/.95 "Big Shoulders Display", sans-serif; }
 .s-card .smeta { font-size: 34px; font-weight: 700; color: var(--deep); margin-top: 18px; }
 .s-card .side p { font-size: 32px; line-height: 1.3; color: #4B5563; margin: 24px 0 0; }
@@ -596,15 +596,16 @@ var CSS2 = `
 .s-grow .chart .peak { fill: #10151C; font-weight: 700; }
 .s-grow .draw { stroke-dasharray: 1; stroke-dashoffset: 0; animation: pf-draw 1.4s cubic-bezier(.22,1,.36,1) both; }
 @keyframes pf-draw { from { stroke-dashoffset: 1; } }
-.s-grow .copy { position: absolute; left: 72px; right: 72px; bottom: 100px; }
+.s-grow .copy { position: absolute; left: 72px; right: 72px; top: 780px; }
 .s-grow h2 { margin: 0; font-weight: 900; font-size: 128px; line-height: .94; letter-spacing: -.02em; }
 .s-grow ul { list-style: none; padding: 0; margin: 56px 0 0; display: grid; gap: 0; }
 .s-grow li { font-size: 44px; line-height: 1.25; padding: 26px 0; border-top: 3px solid #E3E7EC; color: #374151; }
 .s-grow.size-feed .chart { top: 90px; height: 420px; }
+.s-grow.size-feed .copy { top: 560px; }
 .s-grow.size-feed h2 { font-size: 96px; }
 .s-grow.size-feed li { font-size: 36px; padding: 18px 0; }
 .s-grow.size-landscape .chart { top: 80px; left: 40px; width: 600px; height: 400px; }
-.s-grow.size-landscape .copy { left: 680px; right: 48px; top: 70px; bottom: auto; }
+.s-grow.size-landscape .copy { left: 680px; right: 48px; top: 70px; }
 .s-grow.size-landscape h2 { font-size: 64px; }
 .s-grow.size-landscape ul { margin-top: 28px; }
 .s-grow.size-landscape li { font-size: 26px; padding: 14px 0; }
@@ -673,6 +674,11 @@ var CSS3 = `
 `;
 
 // src/render/slides/terminal.ts
+function toolName(name) {
+  if (!name.startsWith("mcp:")) return name;
+  const server = name.slice(4);
+  return server === "connector" ? "Connector" : server.replace(/[_-]+/g, " ");
+}
 function render4(ctx) {
   const { stats, lang, copy } = ctx;
   if (stats.activity.sessions === 0 && stats.tools.calls === 0) return null;
@@ -680,7 +686,7 @@ function render4(ctx) {
   const row = (k, v, cls = "v") => `<div class="row"><span class="k">${k}</span><span class="${cls}">${v}</span></div>`;
   const top = stats.tools.top.slice(0, 4);
   const peak = top[0]?.count ?? 1;
-  const tools = top.map((x) => `<div class="row"><span class="v">${escapeHtml(x.name)}</span><span><i class="bar" style="width:${Math.max(3, Math.round(100 * x.count / peak))}%"></i></span></div>`).join("");
+  const tools = top.map((x) => `<div class="row"><span class="v name">${escapeHtml(toolName(x.name))}</span><span><i class="bar" style="width:${Math.max(3, Math.round(100 * x.count / peak))}%"></i></span></div>`).join("");
   const inner = `<div class="win">
     <div class="dots"><i></i><i></i><i></i></div>
     <div class="p">~ <b>$</b> /promptfolio --year ${stats.year}</div><br>
@@ -705,7 +711,8 @@ var CSS4 = `
 .s-term .p b { color: #FFFFFF; font-weight: 600; }
 .s-term .v { color: #FFFFFF; font-weight: 600; }
 .s-term .hl { color: color-mix(in oklab, var(--accent) 60%, #FFFFFF); font-weight: 600; }
-.s-term .row { display: grid; grid-template-columns: 360px 1fr; align-items: center; }
+.s-term .row { display: grid; grid-template-columns: 360px 1fr; align-items: center; gap: 24px; }
+.s-term .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s-term .bar { display: block; height: 26px; border-radius: 3px; background: color-mix(in oklab, var(--accent) 60%, #FFFFFF); }
 .s-term .verdict { max-width: 860px; }
 .s-term .caret { display: inline-block; width: 20px; height: 40px; background: #D7DEE8; vertical-align: -8px; animation: pf-blink 1.1s steps(1) infinite; }
@@ -731,13 +738,18 @@ function render5(ctx) {
   const cell = Math.max(8, Math.min(26, Math.floor((width - (weeks - 1) * 5) / weeks)));
   const cells = [];
   const months = [];
+  let lastLabel = -Infinity;
   for (let w = 0; w < weeks; w++) {
     for (let d = 0; d < 7; d++) {
       const date = iso(start + (w * 7 + d) * DAY2);
       const v = byDate.get(date) ?? 0;
       const pct = v ? Math.round(18 + 82 * Math.sqrt(v / max)) : 0;
       cells.push(`<i class="cell" style="grid-column:${w + 1};grid-row:${d + 1}${v ? `;background:color-mix(in oklab, var(--accent) ${pct}%, #EEF1F5)` : ""}"></i>`);
-      if (date.endsWith("-01") || w === 0 && d === 0) months.push(`<span style="left:${w * (cell + 5)}px">${shortMonth(date.slice(0, 7), lang)}</span>`);
+      const left = w * (cell + 5);
+      if ((date.endsWith("-01") || w === 0 && d === 0) && left - lastLabel >= 60) {
+        months.push(`<span style="left:${left}px">${shortMonth(date.slice(0, 7), lang)}</span>`);
+        lastLabel = left;
+      }
     }
   }
   const read = compact(stats.tokens.yearTotal, lang);
@@ -823,7 +835,7 @@ function readmeCard(opts) {
   const theme = languageColor(stats.files.topLanguage);
   const months = stats.activity.byMonth;
   const max = Math.max(...months.map((m) => m.messages), 1);
-  const x = (i) => 760 + i * (380 / Math.max(1, months.length - 1));
+  const x = (i) => 920 + i * (230 / Math.max(1, months.length - 1));
   const y = (v) => 330 - 220 * (v / max);
   const line = months.length > 1 ? "M" + months.map((m, i) => `${x(i).toFixed(1)} ${y(m.messages).toFixed(1)}`).join(" L") : "";
   const stat = (label, value, sx) => `<text x="${sx}" y="280" class="v">${escapeHtml(value)}</text><text x="${sx}" y="318" class="l">${escapeHtml(label)}</text>`;

@@ -2,6 +2,13 @@ import { escapeHtml, fill, num } from '../escape.js';
 import { shortDate, t } from '../i18n.js';
 import { frame, type SlideCtx, type SlideOut } from '../slide.js';
 
+/** "mcp:Claude_Browser" -> "Claude Browser"; connector IDs were already reduced to "mcp:connector". */
+export function toolName(name: string): string {
+  if (!name.startsWith('mcp:')) return name;
+  const server = name.slice(4);
+  return server === 'connector' ? 'Connector' : server.replace(/[_-]+/g, ' ');
+}
+
 /** The recap as a session replay in a generic terminal (no Claude Code or Anthropic marks). */
 export function render(ctx: SlideCtx): SlideOut {
   const { stats, lang, copy } = ctx;
@@ -10,7 +17,7 @@ export function render(ctx: SlideCtx): SlideOut {
   const row = (k: string, v: string, cls = 'v') => `<div class="row"><span class="k">${k}</span><span class="${cls}">${v}</span></div>`;
   const top = stats.tools.top.slice(0, 4);
   const peak = top[0]?.count ?? 1;
-  const tools = top.map(x => `<div class="row"><span class="v">${escapeHtml(x.name)}</span><span><i class="bar" style="width:${Math.max(3, Math.round(100 * x.count / peak))}%"></i></span></div>`).join('');
+  const tools = top.map(x => `<div class="row"><span class="v name">${escapeHtml(toolName(x.name))}</span><span><i class="bar" style="width:${Math.max(3, Math.round(100 * x.count / peak))}%"></i></span></div>`).join('');
 
   const inner = `<div class="win">
     <div class="dots"><i></i><i></i><i></i></div>
@@ -37,7 +44,8 @@ const CSS = `
 .s-term .p b { color: #FFFFFF; font-weight: 600; }
 .s-term .v { color: #FFFFFF; font-weight: 600; }
 .s-term .hl { color: color-mix(in oklab, var(--accent) 60%, #FFFFFF); font-weight: 600; }
-.s-term .row { display: grid; grid-template-columns: 360px 1fr; align-items: center; }
+.s-term .row { display: grid; grid-template-columns: 360px 1fr; align-items: center; gap: 24px; }
+.s-term .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s-term .bar { display: block; height: 26px; border-radius: 3px; background: color-mix(in oklab, var(--accent) 60%, #FFFFFF); }
 .s-term .verdict { max-width: 860px; }
 .s-term .caret { display: inline-block; width: 20px; height: 40px; background: #D7DEE8; vertical-align: -8px; animation: pf-blink 1.1s steps(1) infinite; }

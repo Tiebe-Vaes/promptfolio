@@ -53,15 +53,16 @@ const CSS = `
 .s-grow .chart .peak { fill: #10151C; font-weight: 700; }
 .s-grow .draw { stroke-dasharray: 1; stroke-dashoffset: 0; animation: pf-draw 1.4s cubic-bezier(.22,1,.36,1) both; }
 @keyframes pf-draw { from { stroke-dashoffset: 1; } }
-.s-grow .copy { position: absolute; left: 72px; right: 72px; bottom: 100px; }
+.s-grow .copy { position: absolute; left: 72px; right: 72px; top: 780px; }
 .s-grow h2 { margin: 0; font-weight: 900; font-size: 128px; line-height: .94; letter-spacing: -.02em; }
 .s-grow ul { list-style: none; padding: 0; margin: 56px 0 0; display: grid; gap: 0; }
 .s-grow li { font-size: 44px; line-height: 1.25; padding: 26px 0; border-top: 3px solid #E3E7EC; color: #374151; }
 .s-grow.size-feed .chart { top: 90px; height: 420px; }
+.s-grow.size-feed .copy { top: 560px; }
 .s-grow.size-feed h2 { font-size: 96px; }
 .s-grow.size-feed li { font-size: 36px; padding: 18px 0; }
 .s-grow.size-landscape .chart { top: 80px; left: 40px; width: 600px; height: 400px; }
-.s-grow.size-landscape .copy { left: 680px; right: 48px; top: 70px; bottom: auto; }
+.s-grow.size-landscape .copy { left: 680px; right: 48px; top: 70px; }
 .s-grow.size-landscape h2 { font-size: 64px; }
 .s-grow.size-landscape ul { margin-top: 28px; }
 .s-grow.size-landscape li { font-size: 26px; padding: 14px 0; }

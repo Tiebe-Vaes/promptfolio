@@ -78,10 +78,10 @@ const CSS = `
 .s-card .move span { font-size: 54px; font-weight: 900; color: var(--deep); }
 .s-card .move p { grid-column: 1 / -1; margin: 6px 0 0; font-size: 30px; color: #4B5563; }
 .s-card .bottom { margin-top: auto; display: flex; justify-content: space-between; gap: 16px; font-size: 26px; line-height: 1.3; color: #4B5563; border-top: 3px solid #D5DAE1; padding-top: 16px; }
-.s-card.size-feed .card { transform: rotate(1.2deg) scale(.98); }
-.s-card.size-landscape .stage { right: auto; width: 520px; }
-.s-card.size-landscape .card { transform: rotate(1.2deg) scale(.48); }
-.s-card .side { position: absolute; left: 560px; right: 64px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; color: #10151C; }
+.s-card.size-feed .card { zoom: .98; }
+.s-card.size-landscape .stage { right: auto; width: 540px; }
+.s-card.size-landscape .card { zoom: .48; }
+.s-card .side { position: absolute; left: 580px; right: 64px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; color: #10151C; }
 .s-card .sname { font: 900 104px/.95 "Big Shoulders Display", sans-serif; }
 .s-card .smeta { font-size: 34px; font-weight: 700; color: var(--deep); margin-top: 18px; }
 .s-card .side p { font-size: 32px; line-height: 1.3; color: #4B5563; margin: 24px 0 0; }
