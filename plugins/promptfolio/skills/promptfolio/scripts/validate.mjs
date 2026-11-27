@@ -29,26 +29,9 @@ function scanSecrets(text) {
 }
 
 // src/copy.ts
-var COPY_LIMITS = {
-  headline: 60,
-  strength: 90,
-  className: 22,
-  specialMove: 40,
-  weakness: 40,
-  nemesis: 32,
-  diary: 160,
-  awardTitle: 32,
-  awardText: 120,
-  relationshipStatus: 24,
-  relationshipText: 140,
-  caption: 120,
-  tokensLine: 90,
-  moveName: 22,
-  moveText: 60,
-  receiptFooter: 60,
-  verdict: 70,
-  growthLine: 40
-};
+var COPY_LIMITS = { title: 22, line: 90, caption: 200 };
+var RETIRED = ["profile", "persona", "diary", "awards", "relationship", "tokensLine", "verdict", "receiptFooter", "growthLine"];
+var PLATFORMS = ["instagram", "linkedin", "x", "discord"];
 var PLACEHOLDER_RE = /\{([A-Za-z0-9_.]+)\}/g;
 function resolve(stats, path) {
   let v = stats;
@@ -95,68 +78,18 @@ function validateCopy(copy, stats) {
     const filled = fillPlaceholders(value, stats, language);
     if (filled.length > COPY_LIMITS[limit]) errors.push(`${path}: too long (${filled.length} > ${COPY_LIMITS[limit]} characters after filling)`);
   };
-  const list = (path, value, min, max) => {
-    if (!Array.isArray(value) || value.length < min || value.length > max) {
-      errors.push(`${path}: needs ${min === max ? min : `${min}-${max}`} entries`);
-      return [];
-    }
-    return value;
-  };
-  if (copy.schemaVersion !== 1) errors.push("schemaVersion: must be 1");
+  if (copy.schemaVersion !== 2) errors.push("schemaVersion: must be 2");
   if (copy.language !== "en" && copy.language !== "nl") errors.push('language: must be "en" or "nl"');
   if (!["professional", "fun", "roast"].includes(copy.vibe)) errors.push('vibe: must be "professional", "fun" or "roast"');
-  if (copy.vibe === "professional") {
-    const profile = copy.profile;
-    if (!isObj(profile)) errors.push("profile: required for the professional vibe");
-    else {
-      text("profile.headline", profile.headline, "headline");
-      const candidates = new Set(stats.strengthCandidates.map((c) => c.id));
-      const seen = /* @__PURE__ */ new Set();
-      const need = Math.min(3, candidates.size);
-      list("profile.strengths", profile.strengths, need, need).forEach((s, i) => {
-        const id = isObj(s) ? s.id : void 0;
-        if (typeof id !== "string" || !candidates.has(id)) errors.push(`profile.strengths.${i}.id: must be one of the strength candidates in stats`);
-        else if (seen.has(id)) errors.push(`profile.strengths.${i}.id: duplicate strength`);
-        else seen.add(id);
-        text(`profile.strengths.${i}.text`, isObj(s) ? s.text : void 0, "strength");
-      });
-    }
-  }
-  text("tokensLine", copy.tokensLine, "tokensLine");
-  text("verdict", copy.verdict, "verdict");
-  if (copy.vibe === "professional" && stats.activity.growth && stats.activity.growth.factor >= 2) text("growthLine", copy.growthLine, "growthLine");
-  if (copy.vibe === "fun" || copy.vibe === "roast") {
-    text("receiptFooter", copy.receiptFooter, "receiptFooter");
-    const p = copy.persona;
-    if (!isObj(p)) errors.push("persona: required for the fun and roast vibes");
-    else {
-      text("persona.className", p.className, "className");
-      text("persona.specialMove", p.specialMove, "specialMove");
-      text("persona.weakness", p.weakness, "weakness");
-      text("persona.nemesis", p.nemesis, "nemesis");
-      list("persona.moves", p.moves, 3, 3).forEach((mv, i) => {
-        const m = isObj(mv) ? mv : {};
-        text(`persona.moves.${i}.name`, m.name, "moveName");
-        text(`persona.moves.${i}.text`, m.text, "moveText");
-        const value = typeof m.value === "string" ? m.value.match(/^\{([A-Za-z0-9_.]+)\}$/) : null;
-        const v = value ? resolve(stats, value[1]) : void 0;
-        if (typeof v !== "number" || v <= 0) errors.push(`persona.moves.${i}.value: must be exactly one {placeholder} that resolves to a number above zero`);
-      });
-    }
-    list("diary", copy.diary, 3, 5).forEach((d, i) => text(`diary.${i}`, d, "diary"));
-    list("awards", copy.awards, 3, 4).forEach((a, i) => {
-      text(`awards.${i}.title`, isObj(a) ? a.title : void 0, "awardTitle");
-      text(`awards.${i}.text`, isObj(a) ? a.text : void 0, "awardText");
-    });
-    const r = copy.relationship;
-    if (!isObj(r)) errors.push("relationship: required for the fun and roast vibes");
-    else {
-      text("relationship.status", r.status, "relationshipStatus");
-      text("relationship.text", r.text, "relationshipText");
-    }
-  }
-  if (!isObj(copy.captions)) errors.push("captions: must be an object of strings");
-  else for (const [k, v] of Object.entries(copy.captions)) text(`captions.${k}`, v, "caption");
+  for (const k of RETIRED) if (k in copy) errors.push(`${k}: not used since copy v2`);
+  text("title", copy.title, "title");
+  const lines = isObj(copy.lines) ? copy.lines : {};
+  if (!isObj(copy.lines)) errors.push("lines: must be an object with tokens, year, toolkit and growth");
+  for (const k of ["tokens", "year", "toolkit"]) text(`lines.${k}`, lines[k], "line");
+  if (stats.activity.byMonth.length >= 2 || lines.growth !== void 0) text("lines.growth", lines.growth, "line");
+  const captions = isObj(copy.captions) ? copy.captions : {};
+  if (!isObj(copy.captions)) errors.push("captions: must be an object with instagram, linkedin, x and discord");
+  for (const k of PLATFORMS) text(`captions.${k}`, captions[k], "caption");
   return { ok: errors.length === 0, errors };
 }
 

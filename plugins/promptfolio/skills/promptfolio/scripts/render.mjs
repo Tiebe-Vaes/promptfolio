@@ -116,26 +116,9 @@ function scanSecrets(text) {
 }
 
 // src/copy.ts
-var COPY_LIMITS = {
-  headline: 60,
-  strength: 90,
-  className: 22,
-  specialMove: 40,
-  weakness: 40,
-  nemesis: 32,
-  diary: 160,
-  awardTitle: 32,
-  awardText: 120,
-  relationshipStatus: 24,
-  relationshipText: 140,
-  caption: 120,
-  tokensLine: 90,
-  moveName: 22,
-  moveText: 60,
-  receiptFooter: 60,
-  verdict: 70,
-  growthLine: 40
-};
+var COPY_LIMITS = { title: 22, line: 90, caption: 200 };
+var RETIRED = ["profile", "persona", "diary", "awards", "relationship", "tokensLine", "verdict", "receiptFooter", "growthLine"];
+var PLATFORMS = ["instagram", "linkedin", "x", "discord"];
 var PLACEHOLDER_RE = /\{([A-Za-z0-9_.]+)\}/g;
 function resolve(stats, path4) {
   let v = stats;
@@ -182,122 +165,38 @@ function validateCopy(copy, stats) {
     const filled = fillPlaceholders(value, stats, language);
     if (filled.length > COPY_LIMITS[limit]) errors.push(`${path4}: too long (${filled.length} > ${COPY_LIMITS[limit]} characters after filling)`);
   };
-  const list = (path4, value, min, max) => {
-    if (!Array.isArray(value) || value.length < min || value.length > max) {
-      errors.push(`${path4}: needs ${min === max ? min : `${min}-${max}`} entries`);
-      return [];
-    }
-    return value;
-  };
-  if (copy.schemaVersion !== 1) errors.push("schemaVersion: must be 1");
+  if (copy.schemaVersion !== 2) errors.push("schemaVersion: must be 2");
   if (copy.language !== "en" && copy.language !== "nl") errors.push('language: must be "en" or "nl"');
   if (!["professional", "fun", "roast"].includes(copy.vibe)) errors.push('vibe: must be "professional", "fun" or "roast"');
-  if (copy.vibe === "professional") {
-    const profile = copy.profile;
-    if (!isObj(profile)) errors.push("profile: required for the professional vibe");
-    else {
-      text("profile.headline", profile.headline, "headline");
-      const candidates = new Set(stats.strengthCandidates.map((c) => c.id));
-      const seen = /* @__PURE__ */ new Set();
-      const need = Math.min(3, candidates.size);
-      list("profile.strengths", profile.strengths, need, need).forEach((s, i) => {
-        const id = isObj(s) ? s.id : void 0;
-        if (typeof id !== "string" || !candidates.has(id)) errors.push(`profile.strengths.${i}.id: must be one of the strength candidates in stats`);
-        else if (seen.has(id)) errors.push(`profile.strengths.${i}.id: duplicate strength`);
-        else seen.add(id);
-        text(`profile.strengths.${i}.text`, isObj(s) ? s.text : void 0, "strength");
-      });
-    }
-  }
-  text("tokensLine", copy.tokensLine, "tokensLine");
-  text("verdict", copy.verdict, "verdict");
-  if (copy.vibe === "professional" && stats.activity.growth && stats.activity.growth.factor >= 2) text("growthLine", copy.growthLine, "growthLine");
-  if (copy.vibe === "fun" || copy.vibe === "roast") {
-    text("receiptFooter", copy.receiptFooter, "receiptFooter");
-    const p = copy.persona;
-    if (!isObj(p)) errors.push("persona: required for the fun and roast vibes");
-    else {
-      text("persona.className", p.className, "className");
-      text("persona.specialMove", p.specialMove, "specialMove");
-      text("persona.weakness", p.weakness, "weakness");
-      text("persona.nemesis", p.nemesis, "nemesis");
-      list("persona.moves", p.moves, 3, 3).forEach((mv, i) => {
-        const m = isObj(mv) ? mv : {};
-        text(`persona.moves.${i}.name`, m.name, "moveName");
-        text(`persona.moves.${i}.text`, m.text, "moveText");
-        const value = typeof m.value === "string" ? m.value.match(/^\{([A-Za-z0-9_.]+)\}$/) : null;
-        const v = value ? resolve(stats, value[1]) : void 0;
-        if (typeof v !== "number" || v <= 0) errors.push(`persona.moves.${i}.value: must be exactly one {placeholder} that resolves to a number above zero`);
-      });
-    }
-    list("diary", copy.diary, 3, 5).forEach((d, i) => text(`diary.${i}`, d, "diary"));
-    list("awards", copy.awards, 3, 4).forEach((a, i) => {
-      text(`awards.${i}.title`, isObj(a) ? a.title : void 0, "awardTitle");
-      text(`awards.${i}.text`, isObj(a) ? a.text : void 0, "awardText");
-    });
-    const r = copy.relationship;
-    if (!isObj(r)) errors.push("relationship: required for the fun and roast vibes");
-    else {
-      text("relationship.status", r.status, "relationshipStatus");
-      text("relationship.text", r.text, "relationshipText");
-    }
-  }
-  if (!isObj(copy.captions)) errors.push("captions: must be an object of strings");
-  else for (const [k, v] of Object.entries(copy.captions)) text(`captions.${k}`, v, "caption");
+  for (const k of RETIRED) if (k in copy) errors.push(`${k}: not used since copy v2`);
+  text("title", copy.title, "title");
+  const lines = isObj(copy.lines) ? copy.lines : {};
+  if (!isObj(copy.lines)) errors.push("lines: must be an object with tokens, year, toolkit and growth");
+  for (const k of ["tokens", "year", "toolkit"]) text(`lines.${k}`, lines[k], "line");
+  if (stats.activity.byMonth.length >= 2 || lines.growth !== void 0) text("lines.growth", lines.growth, "line");
+  const captions = isObj(copy.captions) ? copy.captions : {};
+  if (!isObj(copy.captions)) errors.push("captions: must be an object with instagram, linkedin, x and discord");
+  for (const k of PLATFORMS) text(`captions.${k}`, captions[k], "caption");
   return { ok: errors.length === 0, errors };
 }
 
-// src/render/shell.ts
-var SIZES = {
-  story: { name: "story", w: 1080, h: 1920 },
-  feed: { name: "feed", w: 1080, h: 1350 },
-  landscape: { name: "landscape", w: 1200, h: 675 },
-  readme: { name: "readme", w: 1200, h: 400 }
-};
-function page(opts) {
-  return `<!doctype html>
-<html lang="${opts.lang}">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
-<title>${opts.title}</title>
-<style>
-${opts.fontsCss}
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; }
-body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-variant-numeric: tabular-nums; }
-${opts.css}
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
-</style>
-</head>
-<body>
-${opts.body}
-</body>
-</html>
-`;
-}
-function progressBar(index, total) {
-  const segs = Array.from({ length: total }, (_, i) => i <= index ? '<i class="on"></i>' : "<i></i>").join("");
-  return `<div class="progress" aria-hidden="true">${segs}</div>`;
-}
-var PROGRESS_CSS = `
-.progress { position: absolute; top: 48px; left: 64px; right: 64px; display: flex; gap: 10px; z-index: 2; }
-.progress i { flex: 1; height: 8px; border-radius: 4px; background: rgba(16,21,28,.18); }
-.progress i.on { background: #10151C; }
-.dark .progress i { background: rgba(255,255,255,.25); }
-.dark .progress i.on { background: #FFFFFF; }
-`;
+// src/render/brand.ts
+var REPO = "github.com/Tiebe-Vaes/promptfolio";
+var REPO_URL = `https://${REPO}`;
 
-// src/render/slide.ts
-function frame(ctx, cls, inner, dark = false) {
-  const vars = `--accent:${ctx.theme.accent};--deep:${ctx.theme.deep};--on-accent:${ctx.theme.onAccent}`;
-  const bar = ctx.progress ? progressBar(ctx.index, ctx.total) : "";
-  return `<section class="slide ${cls}${dark ? " dark" : ""} size-${ctx.size.name}" style="width:${ctx.size.w}px;height:${ctx.size.h}px;${vars}">${bar}${inner}</section>`;
+// src/render/captions.ts
+var PLATFORMS2 = ["instagram", "linkedin", "x", "discord"];
+var X_INTENT = "https://x.com/intent/tweet?text=";
+function buildCaptions(copy, stats) {
+  const out = {};
+  for (const p of PLATFORMS2) {
+    const text = `${fillPlaceholders(copy.captions[p], stats, copy.language)}
+
+${REPO_URL}`;
+    out[p] = p === "x" ? { text, intentUrl: X_INTENT + encodeURIComponent(text) } : { text };
+  }
+  return out;
 }
-var BASE_CSS = `
-.slide { position: relative; overflow: hidden; flex: none; }
-`;
 
 // src/render/escape.ts
 var ENTITIES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
@@ -355,7 +254,46 @@ var STRINGS = {
     save: "Save image",
     screenshot: "Screenshot this slide to share it",
     next: "Next",
-    previous: "Previous"
+    previous: "Previous",
+    card: {
+      tokens: "Tokens",
+      year: "Year in numbers",
+      toolkit: "Toolkit",
+      growth: "Growth",
+      tokensYear: "tokens this year",
+      written: "tokens written",
+      favorite: "favourite model",
+      energy: "energy",
+      water: "water",
+      glasses: (f) => `${f} glasses`,
+      estimate: "estimate",
+      apiNote: "estimate at API prices",
+      prompts: "Prompts",
+      slash: "Slash commands",
+      politeness: '"please" and "thanks"',
+      toolCalls: "Tool calls",
+      commits: "Commits",
+      webSearches: "Web searches",
+      subagents: "Subagents",
+      filesEdited: "Files edited",
+      apiValue: "API value",
+      topTools: "top tools",
+      languages: "Languages",
+      topFirst: (l) => `${l} first`,
+      setup: "Own setup",
+      plugins: "Plugins",
+      skills: (n, f) => `${f} skill${n === 1 ? "" : "s"}`,
+      agents: (n, f) => `${f} agent${n === 1 ? "" : "s"}`,
+      hooks: (n, f) => `${f} hook${n === 1 ? "" : "s"}`,
+      busier: (from, to) => `busier in ${to} than in ${from}`,
+      messagesYear: "messages this year",
+      messages: "Messages",
+      busiestMonth: "Busiest month",
+      streak: "Longest streak",
+      gap: "Longest break",
+      days: (n, f) => `${f} day${n === 1 ? "" : "s"}`,
+      msgs: (f) => `${f} messages`
+    }
   },
   nl: {
     tokensRead: "tokens gelezen",
@@ -394,7 +332,46 @@ var STRINGS = {
     save: "Afbeelding opslaan",
     screenshot: "Maak een screenshot van deze slide om te delen",
     next: "Volgende",
-    previous: "Vorige"
+    previous: "Vorige",
+    card: {
+      tokens: "Tokens",
+      year: "Jaar in cijfers",
+      toolkit: "Toolkit",
+      growth: "Groei",
+      tokensYear: "tokens dit jaar",
+      written: "tokens geschreven",
+      favorite: "favoriete model",
+      energy: "energie",
+      water: "water",
+      glasses: (f) => `${f} glazen`,
+      estimate: "schatting",
+      apiNote: "schatting aan API-prijzen",
+      prompts: "Prompts",
+      slash: "Slash commands",
+      politeness: '"alsjeblieft" en "bedankt"',
+      toolCalls: "Toolcalls",
+      commits: "Commits",
+      webSearches: "Webzoekopdrachten",
+      subagents: "Subagents",
+      filesEdited: "Bestanden bewerkt",
+      apiValue: "API-waarde",
+      topTools: "top tools",
+      languages: "Talen",
+      topFirst: (l) => `${l} eerst`,
+      setup: "Eigen setup",
+      plugins: "Plugins",
+      skills: (n, f) => `${f} skill${n === 1 ? "" : "s"}`,
+      agents: (n, f) => `${f} agent${n === 1 ? "" : "s"}`,
+      hooks: (n, f) => `${f} hook${n === 1 ? "" : "s"}`,
+      busier: (from, to) => `drukker in ${to} dan in ${from}`,
+      messagesYear: "berichten dit jaar",
+      messages: "Berichten",
+      busiestMonth: "Drukste maand",
+      streak: "Langste reeks",
+      gap: "Langste pauze",
+      days: (n, f) => `${f} dag${n === 1 ? "" : "en"}`,
+      msgs: (f) => `${f} berichten`
+    }
   }
 };
 var t = (lang) => STRINGS[lang];
@@ -402,10 +379,185 @@ function shortDate(date, lang) {
   const [y, m, d] = date.split("-").map(Number);
   return new Intl.DateTimeFormat(lang === "nl" ? "nl-BE" : "en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
 }
+function longMonth(month, lang) {
+  const [y, m] = month.split("-").map(Number);
+  return new Intl.DateTimeFormat(lang === "nl" ? "nl-BE" : "en-US", { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
+}
 function shortMonth(month, lang) {
   const [y, m] = month.split("-").map(Number);
   return new Intl.DateTimeFormat(lang === "nl" ? "nl-BE" : "en-US", { month: "short", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 15)));
 }
+
+// src/render/model.ts
+var CARD_IDS = ["tokens", "year", "toolkit", "growth"];
+function toolName(name) {
+  const server = name.startsWith("mcp:") ? name.slice(4) : null;
+  const out = server === null ? name : server === "connector" ? "Connector" : server.replace(/[_-]+/g, " ");
+  return out.length > 18 ? `${out.slice(0, 15)}...` : out;
+}
+function modelLabel(id) {
+  if (!id.startsWith("claude-")) return id;
+  const [family, ...version] = id.slice(7).replace(/-\d{8}$/, "").split("-");
+  return `${family.charAt(0).toUpperCase()}${family.slice(1)}${version.length ? ` ${version.join(".")}` : ""}`;
+}
+function monthSeries(byMonth) {
+  if (byMonth.length === 0) return [];
+  const map = new Map(byMonth.map((m2) => [m2.month, m2.messages]));
+  const out = [];
+  let [y, m] = byMonth[0].month.split("-").map(Number);
+  const last = byMonth.at(-1).month;
+  for (; ; ) {
+    const key = `${y}-${String(m).padStart(2, "0")}`;
+    out.push({ month: key, messages: map.get(key) ?? 0 });
+    if (key >= last) break;
+    if (++m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+  return out;
+}
+function hasCard(id, stats) {
+  switch (id) {
+    case "tokens":
+      return stats.tokens.yearTotal > 0;
+    case "year":
+      return stats.prompts.count + stats.activity.toolCalls > 0;
+    case "toolkit":
+      return stats.tools.top.length > 0;
+    case "growth":
+      return stats.activity.byMonth.length >= 2;
+  }
+}
+function buildCard(id, stats, copy, picked = CARD_IDS) {
+  if (!hasCard(id, stats)) return null;
+  const lang = copy.language;
+  const s = t(lang).card;
+  const n = (v) => num(v, lang);
+  const items = [];
+  const add = (label, value, text, note) => {
+    if (value) items.push({ label: escapeHtml(label), value: escapeHtml(text ?? n(value)), ...note ? { note: escapeHtml(note) } : {} });
+  };
+  const shown = picked.filter((c) => hasCard(c, stats));
+  const base = {
+    id,
+    index: shown.indexOf(id) + 1,
+    total: shown.length,
+    year: stats.year,
+    title: fill(copy.title, stats, lang),
+    heading: escapeHtml(s[id]),
+    line: fill((id === "growth" ? copy.lines.growth : copy.lines[id]) ?? "", stats, lang),
+    bars: [],
+    tools: [],
+    sum: null
+  };
+  if (id === "tokens") {
+    const since = stats.tokens.usageFrom ? t(lang).since(shortDate(stats.tokens.usageFrom, lang)) : void 0;
+    add(s.written, stats.tokens.yearOutput, stats.tokens.yearOutput ? compact(stats.tokens.yearOutput, lang) : void 0, since);
+    const fav = stats.tokens.favoriteModel;
+    if (fav) add(s.favorite, 1, `${modelLabel(fav.model)}, ${Math.round(fav.share * 100)}%`);
+    const eq = new Map(stats.equivalents.map((e) => [e.id, e.value]));
+    const wh = eq.get("energy");
+    if (wh) add(s.energy, wh, `${n(wh)} Wh`, s.estimate);
+    const water = eq.get("water");
+    if (water) add(s.water, water, s.glasses(num(water, lang, 1)), s.estimate);
+    return { ...base, hero: { value: compact(stats.tokens.yearTotal, lang), label: escapeHtml(s.tokensYear) }, items };
+  }
+  if (id === "year") {
+    add(s.prompts, stats.prompts.count);
+    add(s.slash, stats.prompts.slashCommands);
+    add(s.politeness, stats.prompts.politeness);
+    add(s.toolCalls, stats.activity.toolCalls);
+    add(s.commits, stats.tools.commits);
+    add(s.webSearches, stats.tools.webSearches);
+    add(s.subagents, stats.sessions.subagentSessions);
+    add(s.filesEdited, stats.files.edited);
+    const api = stats.apiValue;
+    const sum = api && api.usd >= 1 ? { label: escapeHtml(s.apiValue), value: `$${n(Math.round(api.usd))}`, note: escapeHtml(stats.tokens.usageFrom ? `${s.apiNote}, ${t(lang).since(shortDate(stats.tokens.usageFrom, lang))}` : s.apiNote) } : null;
+    return { ...base, hero: null, items, sum };
+  }
+  if (id === "toolkit") {
+    const top = stats.tools.top.slice(0, 10);
+    const peak = top[0].count || 1;
+    const langs = stats.files.byLanguage.length;
+    add(s.languages, langs, void 0, stats.files.topLanguage ? s.topFirst(stats.files.topLanguage) : void 0);
+    const tl = stats.tooling;
+    const setup = [tl.skills ? s.skills(tl.skills, n(tl.skills)) : "", tl.agents ? s.agents(tl.agents, n(tl.agents)) : "", tl.hooks ? s.hooks(tl.hooks, n(tl.hooks)) : ""].filter(Boolean).join(", ");
+    add(s.setup, tl.total, setup);
+    add(s.plugins, tl.plugins);
+    return {
+      ...base,
+      items,
+      hero: { value: escapeHtml(toolName(top[0].name)), label: escapeHtml(s.topTools) },
+      tools: top.map((x) => ({ name: escapeHtml(toolName(x.name)), count: n(x.count), share: x.count / peak }))
+    };
+  }
+  const g = stats.activity.growth;
+  const series = monthSeries(stats.activity.byMonth);
+  add(s.messages, stats.activity.messages);
+  const bm = stats.activity.busiestMonth;
+  if (bm) add(s.busiestMonth, bm.messages, longMonth(bm.month, lang), s.msgs(n(bm.messages)));
+  add(s.streak, stats.activity.longestStreakDays, s.days(stats.activity.longestStreakDays, n(stats.activity.longestStreakDays)));
+  add(s.gap, stats.activity.longestGapDays, s.days(stats.activity.longestGapDays, n(stats.activity.longestGapDays)));
+  const hero = g && g.factor >= 2 ? { value: `${n(g.factor)}x`, label: escapeHtml(s.busier(shortMonth(g.first.month, lang), shortMonth(g.peak.month, lang))) } : { value: n(stats.activity.messages), label: escapeHtml(s.messagesYear) };
+  return {
+    ...base,
+    hero,
+    items,
+    bars: series.map((m) => ({ label: escapeHtml(shortMonth(m.month, lang)), value: m.messages, peak: !!g && m.month === g.peak.month }))
+  };
+}
+
+// src/render/shell.ts
+var SIZES = {
+  story: { name: "story", w: 1080, h: 1920 },
+  square: { name: "square", w: 1080, h: 1080 },
+  wide: { name: "wide", w: 1200, h: 675 },
+  readme: { name: "readme", w: 1200, h: 400 }
+};
+function page(opts) {
+  return `<!doctype html>
+<html lang="${opts.lang}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>${opts.title}</title>
+<style>
+${opts.fontsCss}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-variant-numeric: tabular-nums; }
+${opts.css}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+${opts.body}
+</body>
+</html>
+`;
+}
+function progressBar(index, total) {
+  const segs = Array.from({ length: total }, (_, i) => i <= index ? '<i class="on"></i>' : "<i></i>").join("");
+  return `<div class="progress" aria-hidden="true">${segs}</div>`;
+}
+var PROGRESS_CSS = `
+.progress { position: absolute; top: 48px; left: 64px; right: 64px; display: flex; gap: 10px; z-index: 2; }
+.progress i { flex: 1; height: 8px; border-radius: 4px; background: rgba(16,21,28,.18); }
+.progress i.on { background: #10151C; }
+.dark .progress i { background: rgba(255,255,255,.25); }
+.dark .progress i.on { background: #FFFFFF; }
+`;
+
+// src/render/styles/style.ts
+var STYLE_IDS = ["clean", "receipt", "terminal", "card"];
+function frame(ctx, style, model, inner, dark = false) {
+  const vars = `--accent:${ctx.theme.accent};--deep:${ctx.theme.deep}`;
+  const bar = ctx.progress ? progressBar(ctx.index, ctx.total) : "";
+  return `<section class="slide st-${style} card-${model.id} size-${ctx.size.name}${dark ? " dark" : ""}" style="width:${ctx.size.w}px;height:${ctx.size.h}px;${vars}">${bar}${inner}</section>`;
+}
+var footer = () => `<footer class="repo">${REPO}</footer>`;
 
 // src/render/theme.ts
 import fs2 from "node:fs";
@@ -477,7 +629,68 @@ function fontFaceCss(assetsDir2, only) {
   return css;
 }
 
-// src/render/slides/card.ts
+// src/render/styles/clean.ts
+var toolLimit = (size) => size === "wide" ? 5 : 10;
+function sideHtml(m, size, maxTools = toolLimit(size)) {
+  const peak = Math.max(...m.bars.map((b) => b.value), 1);
+  const bars = m.bars.length ? `<div class="bars">${m.bars.map((b) => `<div class="b${b.peak ? " pk" : ""}"><i style="height:${Math.max(2, Math.round(100 * b.value / peak))}%"></i><span>${b.label}</span></div>`).join("")}</div>` : "";
+  const tools = m.tools.length ? `<ol class="tools">${m.tools.slice(0, maxTools).map((x) => `<li><span class="n">${x.name}</span><span class="c">${x.count}</span><i style="width:${Math.max(2, Math.round(100 * x.share))}%"></i></li>`).join("")}</ol>` : "";
+  const items = m.items.length ? `<dl class="items">${m.items.map((i) => `<div><dt>${i.label}</dt><dd>${i.value}${i.note ? ` <small>${i.note}</small>` : ""}</dd></div>`).join("")}</dl>` : "";
+  const sum = m.sum ? `<div class="sum"><span>${m.sum.label}</span><b>${m.sum.value}</b><small>${m.sum.note}</small></div>` : "";
+  return `${bars}${tools}${items}${sum}`;
+}
+function render(m, ctx) {
+  const hero = m.hero ? `<div class="hero"><div class="v">${m.hero.value}</div><div class="l">${m.hero.label}</div></div>` : "";
+  const inner = `<div class="main">
+    <header><div class="ttl">${m.title}</div><h2>${m.heading}</h2></header>
+    ${hero}
+    ${m.line ? `<p class="line">${m.line}</p>` : ""}
+  </div>
+  <div class="side">${sideHtml(m, ctx.size.name)}</div>
+  ${footer()}`;
+  return { css: CSS, html: frame(ctx, "clean", m, inner) };
+}
+var CSS = `
+.st-clean { --hero: 300px; --big: 64px; --body: 44px; --small: 30px; --gap: 48px;
+  background: #FFFFFF; color: #10151C; font-family: "Libre Franklin", sans-serif; padding: 130px 72px 64px;
+  display: grid; grid-template: "main" auto "side" 1fr "foot" auto / minmax(0, 1fr); gap: var(--gap); }
+.st-clean .side { align-self: end; }
+.st-clean.size-square { --hero: 210px; --big: 50px; --body: 30px; --small: 22px; --gap: 32px; padding: 64px 64px 44px; }
+.st-clean.size-square .items, .st-clean.size-square .tools { grid-template-columns: 1fr 1fr; column-gap: 48px; }
+.st-clean.size-wide { --hero: 130px; --big: 40px; --body: 25px; --small: 19px; --gap: 18px 56px; padding: 44px 56px 30px;
+  grid-template: "main side" 1fr "foot foot" auto / minmax(0, 1fr) minmax(0, 1fr); }
+.st-clean.size-wide .side { align-self: start; }
+.st-clean .main { grid-area: main; display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+.st-clean .side { grid-area: side; display: flex; flex-direction: column; gap: calc(var(--body) * .8); min-width: 0; }
+.st-clean .ttl { font-size: var(--small); color: #4B5563; }
+.st-clean h2 { margin: 6px 0 0; font: 800 var(--big)/1.05 Archivo, sans-serif; letter-spacing: -.01em; }
+.st-clean .hero .v { font: 900 var(--hero)/.86 Archivo, sans-serif; letter-spacing: -.03em; white-space: nowrap; }
+.st-clean.card-toolkit .hero .v { font-size: calc(var(--hero) * .45); line-height: 1; white-space: normal; }
+.st-clean .hero .l { font: 600 var(--body)/1.2 Archivo, sans-serif; margin-top: calc(var(--body) * .4); color: var(--accent); }
+.st-clean .line { margin: 0; font-size: var(--body); line-height: 1.3; color: #374151; max-width: 30ch; }
+.st-clean .items { margin: 0; display: grid; }
+.st-clean .items div { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; padding: calc(var(--body) * .4) 0; border-top: 2px solid #E3E7EC; }
+.st-clean dt { font-size: var(--body); color: #374151; }
+.st-clean dd { margin: 0; font: 800 var(--body)/1.2 Archivo, sans-serif; text-align: right; white-space: nowrap; }
+.st-clean dd small, .st-clean .sum small { display: block; font: 400 var(--small)/1.2 "Libre Franklin", sans-serif; color: #6B7280; }
+.st-clean .sum { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding-top: calc(var(--body) * .5); border-top: 4px solid #10151C; }
+.st-clean .sum span { font: 700 var(--body) Archivo, sans-serif; }
+.st-clean .sum b { font: 900 calc(var(--big) * 1.1)/1 Archivo, sans-serif; color: var(--accent); }
+.st-clean .sum small { grid-column: 1 / -1; }
+.st-clean .bars { display: flex; align-items: flex-end; gap: calc(var(--body) * .3); height: calc(var(--hero) * 1.6); }
+.st-clean .bars .b { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; }
+.st-clean .bars i { display: block; width: 100%; border-radius: 6px 6px 0 0; background: color-mix(in oklab, var(--accent) 30%, #FFFFFF); }
+.st-clean .bars .pk i { background: var(--accent); }
+.st-clean .bars span { font-size: var(--small); color: #4B5563; }
+.st-clean .tools { list-style: none; margin: 0; padding: 0; display: grid; gap: calc(var(--body) * .35); }
+.st-clean .tools li { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; font-size: var(--small); }
+.st-clean .tools .n { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-clean .tools .c { font-family: Archivo, sans-serif; font-weight: 700; }
+.st-clean .tools i { grid-column: 1 / -1; display: block; height: calc(var(--small) * .45); border-radius: 4px; background: var(--accent); }
+.st-clean .repo { grid-area: foot; font-size: var(--small); color: #6B7280; }
+`;
+
+// src/render/styles/card.ts
 function level(yearTokens) {
   return Math.max(1, Math.min(99, Math.floor(Math.log2(yearTokens / 1e6 + 1) * 5)));
 }
@@ -504,325 +717,212 @@ function sprite(stats, accent, deep) {
     }
   }
   rects.push('<rect x="4" y="4" width="1" height="1" fill="#FFFFFF"/>', '<rect x="7" y="4" width="1" height="1" fill="#FFFFFF"/>');
-  return `<svg viewBox="0 0 12 12" width="360" height="360" shape-rendering="crispEdges" role="img" aria-label="creature">${rects.join("")}</svg>`;
+  return `<svg viewBox="0 0 12 12" width="260" height="260" shape-rendering="crispEdges" role="img" aria-label="creature">${rects.join("")}</svg>`;
 }
-function render(ctx) {
-  const { stats, lang, copy } = ctx;
-  const p = copy.persona;
-  if (!p || !p.moves || p.moves.length === 0) return null;
-  const s = t(lang);
-  const lv = level(stats.tokens.yearTotal);
-  const rare = s.rarity[rarity(stats)];
-  const moves = p.moves.map((m) => `<div class="move"><b>${fill(m.name, stats, lang)}</b><span>${fill(m.value, stats, lang)}</span><p>${fill(m.text, stats, lang)}</p></div>`).join("");
-  const typeLine = s.classLine(escapeHtml(stats.files.topLanguage ?? "Polyglot"), stats.activity.sessions, String(stats.activity.sessions), stats.year);
+function render2(m, ctx) {
+  const s = t(ctx.lang);
+  const lv = level(ctx.stats.tokens.yearTotal);
+  const rare = s.rarity[rarity(ctx.stats)];
+  const hero = m.hero ? `<div class="hero"><b>${m.hero.value}</b><span>${m.hero.label}</span></div>` : "";
   const cardHtml = `<div class="card"><div class="face">
-    <div class="top"><div class="name">${fill(p.className, stats, lang)}</div><div class="lv">${s.level} <b>${lv}</b></div></div>
-    <div class="window">${sprite(stats, ctx.theme.accent, ctx.theme.deep)}</div>
-    <div class="type">${typeLine}</div>
-    ${moves}
-    <div class="bottom"><span>${s.weakness}: ${fill(p.weakness, stats, lang)}</span><span>${s.nemesis}: ${fill(p.nemesis, stats, lang)}</span><span>${rare}</span></div>
+    <div class="top"><div class="name">${m.title}</div><div class="lv">${s.level} <b>${lv}</b></div></div>
+    <div class="window">${sprite(ctx.stats, ctx.theme.accent, ctx.theme.deep)}</div>
+    <div class="type">${m.heading}</div>
+    ${hero}
+    <div class="side">${sideHtml(m, ctx.size.name, 6)}</div>
+    ${m.line ? `<p class="flavor">${m.line}</p>` : ""}
+    <div class="bottom"><span>${m.index}/${m.total}</span><span>${rare}</span></div>
   </div></div>`;
-  const side = ctx.size.name === "landscape" ? `<div class="side"><div class="sname">${fill(p.className, stats, lang)}</div><div class="smeta">${s.level} ${lv}, ${rare}</div><p>${fill(p.specialMove, stats, lang)}</p></div>` : "";
-  return { css: CSS, html: frame(ctx, "s-card", `<div class="stage">${cardHtml}</div>${side}`) };
-}
-var CSS = `
-.s-card { background: #E9ECF1; font-family: Archivo, sans-serif; }
-.s-card .stage { position: absolute; inset: 0; display: grid; place-items: center; }
-.s-card .card { width: 860px; height: 1220px; border-radius: 40px; padding: 26px; background: var(--deep); box-shadow: 0 60px 110px rgba(16,21,28,.35); transform: rotate(1.2deg); }
-.s-card .face { height: 100%; border-radius: 22px; background: #F7F8FA; padding: 34px 40px; display: flex; flex-direction: column; }
-.s-card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
-.s-card .name { font: 900 88px/1 "Big Shoulders Display", sans-serif; color: #10151C; }
-.s-card .lv { font-weight: 700; font-size: 40px; color: var(--deep); white-space: nowrap; }
-.s-card .lv b { font-size: 64px; }
-.s-card .window { margin-top: 22px; height: 470px; border-radius: 14px; border: 6px solid var(--deep); background: color-mix(in oklab, var(--accent) 14%, #F7F8FA); display: grid; place-items: center; }
-.s-card .type { font-size: 30px; line-height: 1.3; color: #4B5563; margin: 14px 0 18px; }
-.s-card .move { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding: 18px 0; border-top: 3px solid #D5DAE1; }
-.s-card .move b { font-size: 46px; font-weight: 800; color: #10151C; }
-.s-card .move span { font-size: 54px; font-weight: 900; color: var(--deep); }
-.s-card .move p { grid-column: 1 / -1; margin: 6px 0 0; font-size: 30px; color: #4B5563; }
-.s-card .bottom { margin-top: auto; display: flex; justify-content: space-between; gap: 16px; font-size: 26px; line-height: 1.3; color: #4B5563; border-top: 3px solid #D5DAE1; padding-top: 16px; }
-.s-card.size-feed .card { zoom: .98; }
-.s-card.size-landscape .stage { right: auto; width: 540px; }
-.s-card.size-landscape .card { zoom: .48; }
-.s-card .side { position: absolute; left: 580px; right: 64px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; color: #10151C; }
-.s-card .sname { font: 900 104px/.95 "Big Shoulders Display", sans-serif; }
-.s-card .smeta { font-size: 34px; font-weight: 700; color: var(--deep); margin-top: 18px; }
-.s-card .side p { font-size: 32px; line-height: 1.3; color: #4B5563; margin: 24px 0 0; }
-`;
-
-// src/render/slides/growth.ts
-function monthSeries(byMonth) {
-  if (byMonth.length === 0) return [];
-  const map = new Map(byMonth.map((m2) => [m2.month, m2.messages]));
-  const out = [];
-  let [y, m] = byMonth[0].month.split("-").map(Number);
-  const last = byMonth.at(-1).month;
-  for (; ; ) {
-    const key = `${y}-${String(m).padStart(2, "0")}`;
-    out.push({ month: key, messages: map.get(key) ?? 0 });
-    if (key >= last) break;
-    if (++m > 12) {
-      m = 1;
-      y++;
-    }
-  }
-  return out;
-}
-function render2(ctx) {
-  const { stats, lang, copy } = ctx;
-  const g = stats.activity.growth;
-  if (!g || g.factor < 2 || !copy.growthLine || !copy.profile) return null;
-  const series = monthSeries(stats.activity.byMonth);
-  const max = Math.max(...series.map((m) => m.messages), 1);
-  const W = 952, H = 560;
-  const x = (i) => 20 + i * ((W - 40) / Math.max(1, series.length - 1));
-  const y = (v) => H - 80 - (H - 160) * (v / max);
-  const pts = series.map((m, i) => [x(i), y(m.messages)]);
-  const line = "M" + pts.map((p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" L");
-  const area = `M${pts[0][0].toFixed(1)} ${H - 80} L` + pts.map((p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" L") + ` L${pts.at(-1)[0].toFixed(1)} ${H - 80} Z`;
-  const pk = series.findIndex((m) => m.month === g.peak.month);
-  const labels = series.map((m, i) => `<text x="${x(i).toFixed(1)}" y="${H - 24}" text-anchor="middle">${shortMonth(m.month, lang)}</text>`).join("");
-  const chart = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${num(g.peak.messages, lang)}">
-    <path d="${area}" fill="color-mix(in oklab, var(--accent) 16%, #FFFFFF)"/>
-    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" pathLength="1" class="draw"/>
-    <circle cx="${pts[0][0].toFixed(1)}" cy="${pts[0][1].toFixed(1)}" r="14" fill="#10151C"/>
-    ${pk >= 0 ? `<circle cx="${pts[pk][0].toFixed(1)}" cy="${pts[pk][1].toFixed(1)}" r="14" fill="#10151C"/><text x="${(pts[pk][0] - 24).toFixed(1)}" y="${(pts[pk][1] - 28).toFixed(1)}" text-anchor="end" class="peak">${num(g.peak.messages, lang)}</text>` : ""}
-    ${labels}
-  </svg>`;
-  const strengths = copy.profile.strengths.slice(0, 3).map((st) => `<li>${fill(st.text, stats, lang)}</li>`).join("");
-  const inner = `${chart}<div class="copy"><h2>${fill(copy.growthLine, stats, lang)}</h2><ul>${strengths}</ul></div>`;
-  return { css: CSS2, html: frame(ctx, "s-grow", inner) };
+  const aside = ctx.size.name === "wide" ? `<div class="aside"><div class="aname">${m.title}</div><div class="ameta">${m.heading}, ${s.level} ${lv}, ${rare}</div>${m.line ? `<p>${m.line}</p>` : ""}</div>` : "";
+  return { css: CSS2, html: frame(ctx, "card", m, `<div class="stage">${cardHtml}</div>${aside}${footer()}`) };
 }
 var CSS2 = `
-.s-grow { background: #FFFFFF; color: #10151C; font-family: Archivo, sans-serif; }
-.s-grow .chart { position: absolute; top: 120px; left: 64px; width: 952px; height: 560px; overflow: visible; }
-.s-grow .chart text { font-size: 30px; fill: #4B5563; font-family: Archivo, sans-serif; }
-.s-grow .chart .peak { fill: #10151C; font-weight: 700; }
-.s-grow .draw { stroke-dasharray: 1; stroke-dashoffset: 0; animation: pf-draw 1.4s cubic-bezier(.22,1,.36,1) both; }
-@keyframes pf-draw { from { stroke-dashoffset: 1; } }
-.s-grow .copy { position: absolute; left: 72px; right: 72px; top: 780px; }
-.s-grow h2 { margin: 0; font-weight: 900; font-size: 128px; line-height: .94; letter-spacing: -.02em; }
-.s-grow ul { list-style: none; padding: 0; margin: 56px 0 0; display: grid; gap: 0; }
-.s-grow li { font-size: 44px; line-height: 1.25; padding: 26px 0; border-top: 3px solid #E3E7EC; color: #374151; }
-.s-grow.size-feed .chart { top: 90px; height: 420px; }
-.s-grow.size-feed .copy { top: 560px; }
-.s-grow.size-feed h2 { font-size: 96px; }
-.s-grow.size-feed li { font-size: 36px; padding: 18px 0; }
-.s-grow.size-landscape .chart { top: 80px; left: 40px; width: 600px; height: 400px; }
-.s-grow.size-landscape .copy { left: 680px; right: 48px; top: 70px; }
-.s-grow.size-landscape h2 { font-size: 64px; }
-.s-grow.size-landscape ul { margin-top: 28px; }
-.s-grow.size-landscape li { font-size: 26px; padding: 14px 0; }
+.st-card { --body: 32px; --small: 24px; background: #E9ECF1; font-family: Archivo, sans-serif; color: #10151C; }
+.st-card .stage { position: absolute; inset: 0 0 60px; display: grid; place-items: center; }
+.st-card .card { width: 860px; height: 1440px; border-radius: 40px; padding: 26px; background: var(--deep); box-shadow: 0 60px 110px rgba(16,21,28,.35); transform: rotate(1.2deg); }
+.st-card.size-square .card { zoom: .64; }
+.st-card.size-wide .stage { right: auto; width: 560px; bottom: 30px; }
+.st-card.size-wide .card { zoom: .42; }
+.st-card .face { height: 100%; border-radius: 22px; background: #F7F8FA; padding: 30px 40px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+.st-card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
+.st-card .name { font: 900 80px/1 "Big Shoulders Display", sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-card .lv { font-weight: 700; font-size: 36px; color: var(--deep); white-space: nowrap; }
+.st-card .lv b { font-size: 58px; }
+.st-card .window { height: 300px; flex: none; border-radius: 14px; border: 6px solid var(--deep); background: color-mix(in oklab, var(--accent) 14%, #F7F8FA); display: grid; place-items: center; }
+.st-card .type { font-size: 30px; font-weight: 700; color: var(--deep); }
+.st-card .hero b { display: block; font: 900 120px/.9 Archivo, sans-serif; letter-spacing: -.02em; white-space: nowrap; }
+.st-card.card-toolkit .hero b { font-size: 72px; }
+.st-card .hero span { font-size: var(--small); color: #4B5563; }
+.st-card .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.st-card .items { margin: 0; display: grid; }
+.st-card .items div { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; padding: 9px 0; border-top: 3px solid #D5DAE1; }
+.st-card dt { font-size: var(--body); color: #374151; }
+.st-card dd { margin: 0; font: 800 var(--body)/1.2 Archivo, sans-serif; color: var(--deep); text-align: right; white-space: nowrap; }
+.st-card dd small, .st-card .sum small { display: block; font-size: 20px; font-weight: 400; color: #6B7280; }
+.st-card .sum { display: grid; grid-template-columns: 1fr auto; align-items: baseline; border-top: 4px solid var(--deep); padding-top: 10px; }
+.st-card .sum span { font-size: var(--body); font-weight: 700; }
+.st-card .sum b { font-size: 56px; font-weight: 900; color: var(--deep); }
+.st-card .sum small { grid-column: 1 / -1; }
+.st-card .bars { display: flex; align-items: flex-end; gap: 8px; height: 180px; }
+.st-card .bars .b { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; }
+.st-card .bars i { display: block; width: 100%; border-radius: 4px 4px 0 0; background: color-mix(in oklab, var(--accent) 35%, #F7F8FA); }
+.st-card .bars .pk i { background: var(--deep); }
+.st-card .bars span { font-size: 20px; color: #4B5563; }
+.st-card .tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.st-card .tools li { display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; font-size: 26px; }
+.st-card .tools .n { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-card .tools .c { font-weight: 800; color: var(--deep); }
+.st-card .tools i { grid-column: 1 / -1; display: block; height: 10px; border-radius: 3px; background: var(--accent); }
+.st-card .flavor { margin: 0; font: 400 28px/1.3 "Libre Franklin", sans-serif; color: #4B5563; }
+.st-card .bottom { margin-top: auto; display: flex; justify-content: space-between; font-size: 26px; font-weight: 700; color: #4B5563; border-top: 3px solid #D5DAE1; padding-top: 12px; }
+.st-card .aside { position: absolute; left: 600px; right: 56px; top: 0; bottom: 60px; display: flex; flex-direction: column; justify-content: center; }
+.st-card .aname { font: 900 96px/.95 "Big Shoulders Display", sans-serif; }
+.st-card .ameta { font-size: 28px; font-weight: 700; color: var(--deep); margin-top: 16px; }
+.st-card .aside p { font: 400 28px/1.3 "Libre Franklin", sans-serif; color: #4B5563; margin: 20px 0 0; }
+.st-card .repo { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; font: 400 var(--small) "Libre Franklin", sans-serif; color: #4B5563; }
+.st-card.size-wide .repo { font-size: 18px; bottom: 14px; }
 `;
 
-// src/render/slides/receipt.ts
+// src/render/styles/receipt.ts
 var DAY = 864e5;
 var toMs = (d) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));
-function render3(ctx) {
-  const { stats, lang, copy } = ctx;
-  const daily = stats.activity.daily;
-  if (daily.length === 0) return null;
-  const s = t(lang);
-  const line = (label, value, cls = "") => `<div class="ln${cls}"><span>${label}</span><span>${value}</span></div>`;
-  const items = [
-    line(s.sessions, num(stats.activity.sessions, lang)),
-    line(s.messages, num(stats.activity.messages, lang)),
-    stats.tools.bash ? line(s.bash, num(stats.tools.bash, lang)) : "",
-    stats.tools.testRuns ? line(s.testRuns, num(stats.tools.testRuns, lang)) : "",
-    stats.tools.commits ? line(s.commits, num(stats.tools.commits, lang)) : "",
-    stats.prompts.count ? line(escapeHtml(s.please), num(stats.prompts.politeness, lang)) : "",
-    stats.prompts.count ? line(escapeHtml(s.noWait), num(stats.prompts.corrections, lang)) : ""
-  ].join("");
-  const tokens = [
-    stats.tokens.yearTotal ? line(s.tokensRead.replace(/^./, (c) => c.toUpperCase()), compact(stats.tokens.yearTotal, lang)) : "",
-    stats.tokens.yearOutput ? line(s.tokensWritten.replace(/^./, (c) => c.toUpperCase()), compact(stats.tokens.yearOutput, lang)) : ""
-  ].join("");
-  const api = stats.apiValue && stats.apiValue.usd >= 1 ? line(s.apiValue, `$${num(Math.round(stats.apiValue.usd), lang)}`, " tot") + line(s.youPaid, s.aPlan) + `<div class="note">${s.apiNote}${stats.tokens.usageFrom ? `, ${s.since(shortDate(stats.tokens.usageFrom, lang))}` : ""}${stats.apiValue.skippedModels.length ? `, ${s.excludes(stats.apiValue.skippedModels.length)}` : ""}</div>` : "";
-  const footer = copy.vibe !== "professional" && copy.receiptFooter ? fill(copy.receiptFooter, stats, lang) : s.receiptThanks;
+var TOOLS = { story: 10, square: 6, wide: 5 };
+function barcode(daily) {
+  if (daily.length === 0) return "";
   const first = toMs(daily[0].date);
   const days = Math.round((toMs(daily.at(-1).date) - first) / DAY) + 1;
   const byDate = new Map(daily.map((d) => [d.date, d.messages]));
   const max = Math.max(...daily.map((d) => d.messages), 1);
-  const bars = Array.from({ length: days }, (_, i) => {
+  return `<div class="code">${Array.from({ length: days }, (_, i) => {
     const v = byDate.get(new Date(first + i * DAY).toISOString().slice(0, 10)) ?? 0;
     return `<i class="bar" style="height:${Math.max(6, Math.round(100 * Math.sqrt(v / max)))}%"></i>`;
-  }).join("");
+  }).join("")}</div>`;
+}
+function render3(m, ctx) {
+  const ln = (label, value, cls = "") => `<div class="ln${cls}"><span>${label}</span><span>${value}</span></div>`;
+  const peak = Math.max(...m.bars.map((b) => b.value), 1);
+  const blocks = (v) => "#".repeat(Math.max(v > 0 ? 1 : 0, Math.round(12 * v / peak)));
+  const body = [
+    m.hero ? `<div class="hero"><b>${m.hero.value}</b><span>${m.hero.label}</span></div><hr>` : "",
+    m.bars.length ? m.bars.map((b) => ln(`${b.label} <em>${blocks(b.value)}</em>`, num(b.value, ctx.lang))).join("") + "<hr>" : "",
+    m.tools.length ? m.tools.slice(0, TOOLS[ctx.size.name] ?? 10).map((x) => ln(x.name, x.count)).join("") + "<hr>" : "",
+    m.items.map((i) => ln(i.label, `${i.value}${i.note ? `*` : ""}`)).join(""),
+    m.sum ? `<hr>${ln(m.sum.label, m.sum.value, " tot")}<div class="note">${m.sum.note}</div>` : "",
+    m.items.some((i) => i.note) ? `<div class="note">* ${[...new Set(m.items.filter((i) => i.note).map((i) => i.note))].join(", ")}</div>` : ""
+  ].join("");
   const inner = `<div class="slip">
     <h3>PROMPTFOLIO</h3>
-    <div class="c">${s.receiptYear(stats.year)}<br>${shortDate(daily[0].date, lang)} &ndash; ${shortDate(daily.at(-1).date, lang)}</div>
-    <hr>${items}<hr>${tokens}${api}<hr>
-    <div class="c">${footer}</div>
-    <div class="bars">${bars}</div>
+    <div class="c">${m.heading}<br>${t(ctx.lang).receiptYear(m.year)}<br>${m.title}</div>
+    <hr><div class="body">${body}</div><hr>
+    ${m.line ? `<div class="c say">${m.line}</div>` : ""}
+    ${barcode(ctx.stats.activity.daily)}
+    <div class="c repo">${REPO}</div>
   </div>`;
-  return { css: CSS3, html: frame(ctx, "s-rcpt", inner) };
+  return { css: CSS3, html: frame(ctx, "receipt", m, inner) };
 }
 var CSS3 = `
-.s-rcpt { background: var(--accent); display: grid; place-items: center; }
-.s-rcpt .slip { width: 820px; background: #FFFFFF; color: #111111; font: 400 34px/1.45 "IBM Plex Mono", monospace; padding: 72px 64px 90px;
-  transform: rotate(-1.6deg); box-shadow: 0 50px 90px rgba(0,0,0,.28);
-  -webkit-mask: radial-gradient(14px at 50% 100%, transparent 98%, #000) 0 0 / 40px 100% repeat-x;
-          mask: radial-gradient(14px at 50% 100%, transparent 98%, #000) 0 0 / 40px 100% repeat-x; }
-.s-rcpt h3 { font: 600 52px/1.1 "IBM Plex Mono", monospace; text-align: center; margin: 0 0 6px; }
-.s-rcpt .c { text-align: center; }
-.s-rcpt hr { border: 0; border-top: 3px dashed #111111; margin: 26px 0; }
-.s-rcpt .ln { display: flex; justify-content: space-between; gap: 20px; }
-.s-rcpt .tot { font-weight: 600; font-size: 44px; margin-top: 8px; }
-.s-rcpt .note { font-size: 24px; color: #4B5563; margin-top: 6px; }
-.s-rcpt .bars { display: flex; align-items: flex-end; gap: 2px; height: 110px; margin-top: 32px; }
-.s-rcpt .bar { flex: 1; background: #111111; }
-.s-rcpt.size-feed .slip { font-size: 28px; padding: 48px 56px 64px; width: 760px; }
-.s-rcpt.size-feed h3 { font-size: 44px; }
-.s-rcpt.size-feed hr { margin: 18px 0; }
-.s-rcpt.size-feed .tot { font-size: 36px; }
-.s-rcpt.size-feed .bars { height: 80px; margin-top: 22px; }
+.st-receipt { --f: 36px; --w: 880px; background: var(--accent); display: grid; place-items: center; }
+.st-receipt.size-square { --f: 23px; --w: 640px; }
+.st-receipt.size-wide { --f: 18px; --w: 980px; }
+.st-receipt.size-wide .body { columns: 2; column-gap: 2.4em; column-rule: 2px dashed #111111; }
+.st-receipt.size-wide .slip { transform: rotate(-1deg); }
+.st-receipt .slip { width: var(--w); background: #FFFFFF; color: #111111; font: 400 var(--f)/1.4 "IBM Plex Mono", monospace;
+  padding: calc(var(--f) * 2) calc(var(--f) * 1.8) calc(var(--f) * 2.4); transform: rotate(-1.6deg); box-shadow: 0 40px 80px rgba(0,0,0,.28);
+  -webkit-mask: radial-gradient(calc(var(--f) * .4) at 50% 100%, transparent 98%, #000) 0 0 / calc(var(--f) * 1.2) 100% repeat-x;
+          mask: radial-gradient(calc(var(--f) * .4) at 50% 100%, transparent 98%, #000) 0 0 / calc(var(--f) * 1.2) 100% repeat-x; }
+.st-receipt h3 { font: 600 calc(var(--f) * 1.5)/1.1 "IBM Plex Mono", monospace; text-align: center; margin: 0 0 .2em; letter-spacing: .08em; }
+.st-receipt .c { text-align: center; }
+.st-receipt hr { border: 0; border-top: 3px dashed #111111; margin: .7em 0; }
+.st-receipt .ln { display: flex; justify-content: space-between; gap: 1em; }
+.st-receipt .ln { break-inside: avoid; }
+.st-receipt .ln span:first-child { min-width: 0; }
+.st-receipt .ln span:last-child { white-space: nowrap; text-align: right; }
+.st-receipt .ln em { font-style: normal; color: #6B7280; }
+.st-receipt .hero { text-align: center; }
+.st-receipt .hero b { display: block; font: 600 calc(var(--f) * 2.8)/1.05 "IBM Plex Mono", monospace; }
+.st-receipt .hero span { text-transform: uppercase; letter-spacing: .06em; }
+.st-receipt .tot { font-weight: 600; font-size: calc(var(--f) * 1.3); }
+.st-receipt .note { font-size: calc(var(--f) * .7); color: #4B5563; }
+.st-receipt .say { margin: .4em 0; }
+.st-receipt .code { display: flex; align-items: flex-end; gap: 1px; height: calc(var(--f) * 2.6); margin-top: 1em; }
+.st-receipt .bar { flex: 1; background: #111111; }
+.st-receipt .repo { font-size: calc(var(--f) * .7); margin-top: .6em; }
 `;
 
-// src/render/slides/terminal.ts
-function toolName(name) {
-  if (!name.startsWith("mcp:")) return name;
-  const server = name.slice(4);
-  return server === "connector" ? "Connector" : server.replace(/[_-]+/g, " ");
-}
-function render4(ctx) {
-  const { stats, lang, copy } = ctx;
-  if (stats.activity.sessions === 0 && stats.tools.calls === 0) return null;
-  const s = t(lang);
+// src/render/styles/terminal.ts
+var TOOLS2 = { story: 10, square: 7, wide: 5 };
+function render4(m, ctx) {
   const row = (k, v, cls = "v") => `<div class="row"><span class="k">${k}</span><span class="${cls}">${v}</span></div>`;
-  const top = stats.tools.top.slice(0, 4);
-  const peak = top[0]?.count ?? 1;
-  const tools = top.map((x) => `<div class="row"><span class="v name">${escapeHtml(toolName(x.name))}</span><span><i class="bar" style="width:${Math.max(3, Math.round(100 * x.count / peak))}%"></i></span></div>`).join("");
+  const bar = (share) => `<i class="bar" style="width:${Math.max(2, Math.round(100 * share))}%"></i>`;
+  const peak = Math.max(...m.bars.map((b) => b.value), 1);
+  const body = [
+    m.hero ? `<div class="hero"><b>${m.hero.value}</b> <span class="k">${m.hero.label}</span></div>` : "",
+    m.bars.length ? `<div class="chart">${m.bars.map((b) => `<div class="cr${b.peak ? " pk" : ""}"><span class="k">${b.label}</span>${bar(b.value / peak)}<span class="v">${num(b.value, ctx.lang)}</span></div>`).join("")}</div>` : "",
+    m.tools.length ? `<div class="chart">${m.tools.slice(0, TOOLS2[ctx.size.name] ?? 10).map((x) => `<div class="cr"><span class="v name">${x.name}</span>${bar(x.share)}<span class="v">${x.count}</span></div>`).join("")}</div>` : "",
+    m.items.length ? `<div class="rows">${m.items.map((i) => row(i.label, `${i.value}${i.note ? ` <span class="k">(${i.note})</span>` : ""}`)).join("")}</div>` : "",
+    m.sum ? row(m.sum.label, `${m.sum.value} <span class="k">(${m.sum.note})</span>`, "hl") : ""
+  ].join("");
   const inner = `<div class="win">
     <div class="dots"><i></i><i></i><i></i></div>
-    <div class="p">~ <b>$</b> /promptfolio --year ${stats.year}</div><br>
-    <div class="k">${s.reading(stats.activity.activeDays, num(stats.activity.activeDays, lang))}</div>
-    <div class="k">${s.done}</div><br>
-    ${row(s.sessions.toLowerCase(), num(stats.activity.sessions, lang))}
-    ${stats.activity.busiestDay ? row(s.busiestDay, `${shortDate(stats.activity.busiestDay.date, lang)} (${num(stats.activity.busiestDay.messages, lang)} ${s.msgs})`) : ""}
-    ${row(s.streak, s.days(stats.activity.longestStreakDays, num(stats.activity.longestStreakDays, lang)))}
-    ${stats.files.topLanguage ? row(s.topLanguage, escapeHtml(stats.files.topLanguage), "hl") : ""}
-    ${tools ? `<br><div class="k">${s.topTools}</div>${tools}` : ""}
-    ${copy.verdict ? `<br><div class="k">${s.verdict}</div><div class="v verdict">${fill(copy.verdict, stats, lang)}</div>` : ""}
-    <br><div class="p">~ <b>$</b> <span class="caret"></span></div>
+    <div class="p">~ <b>$</b> promptfolio ${m.id} --year ${m.year}</div>
+    <div class="k">${m.heading}, ${m.title}</div>
+    <div class="body">${body}</div>
+    ${m.line ? `<div class="k say"># ${m.line}</div>` : ""}
+    <div class="p">~ <b>$</b> <span class="caret"></span></div>
+    <div class="k repo">${REPO}</div>
   </div>`;
-  return { css: CSS4, html: frame(ctx, "s-term", inner, true) };
+  return { css: CSS4, html: frame(ctx, "terminal", m, inner, true) };
 }
 var CSS4 = `
-.s-term { background: #0D1117; color: #D7DEE8; font: 400 36px/1.5 "IBM Plex Mono", monospace; padding: 150px 70px; }
-.s-term .win { border-radius: 24px; background: #161B22; border: 2px solid #262D37; padding: 44px 48px; height: 100%; overflow: hidden; }
-.s-term .dots { display: flex; gap: 14px; margin-bottom: 40px; }
-.s-term .dots i { width: 22px; height: 22px; border-radius: 50%; background: #2E3743; }
-.s-term .p, .s-term .k { color: #8B97A7; }
-.s-term .p b { color: #FFFFFF; font-weight: 600; }
-.s-term .v { color: #FFFFFF; font-weight: 600; }
-.s-term .hl { color: color-mix(in oklab, var(--accent) 60%, #FFFFFF); font-weight: 600; }
-.s-term .row { display: grid; grid-template-columns: 360px 1fr; align-items: center; gap: 24px; }
-.s-term .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.s-term .bar { display: block; height: 26px; border-radius: 3px; background: color-mix(in oklab, var(--accent) 60%, #FFFFFF); }
-.s-term .verdict { max-width: 860px; }
-.s-term .caret { display: inline-block; width: 20px; height: 40px; background: #D7DEE8; vertical-align: -8px; animation: pf-blink 1.1s steps(1) infinite; }
+.st-terminal { --f: 36px; background: #0D1117; color: #D7DEE8; font: 400 var(--f)/1.5 "IBM Plex Mono", monospace; padding: 130px 60px 70px; }
+.st-terminal.size-square { --f: 25px; padding: 56px; }
+.st-terminal.size-wide { --f: 18px; padding: 36px 44px; }
+.st-terminal .win { border-radius: calc(var(--f) * .6); background: #161B22; border: 2px solid #262D37; padding: calc(var(--f) * 1.2) calc(var(--f) * 1.3); height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: calc(var(--f) * .5); }
+.st-terminal .dots { display: flex; gap: calc(var(--f) * .4); margin-bottom: calc(var(--f) * .5); }
+.st-terminal .dots i { width: calc(var(--f) * .6); height: calc(var(--f) * .6); border-radius: 50%; background: #2E3743; }
+.st-terminal .p, .st-terminal .k { color: #8B97A7; }
+.st-terminal .p b, .st-terminal .v { color: #FFFFFF; font-weight: 600; }
+.st-terminal .hl { color: color-mix(in oklab, var(--accent) 60%, #FFFFFF); font-weight: 600; }
+.st-terminal .body { display: flex; flex-direction: column; gap: calc(var(--f) * .7); margin: calc(var(--f) * .5) 0; min-height: 0; flex: 0 1 auto; overflow: hidden; }
+.st-terminal.size-wide .hero b { font-size: calc(var(--f) * 2); }
+.st-terminal.size-wide .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 2.4em; align-content: start; }
+.st-terminal .hero b { font-size: calc(var(--f) * 2.6); line-height: 1.05; color: #FFFFFF; }
+.st-terminal .row { display: flex; justify-content: space-between; gap: 1em; }
+.st-terminal .row .v, .st-terminal .row .hl { text-align: right; white-space: nowrap; }
+.st-terminal .chart { display: grid; gap: calc(var(--f) * .2); }
+.st-terminal .cr { display: grid; grid-template-columns: 8.5em 1fr 4.5em; align-items: center; gap: .6em; }
+.st-terminal .cr .v:last-child { text-align: right; }
+.st-terminal .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-terminal .bar { display: block; height: .62em; border-radius: 2px; background: color-mix(in oklab, var(--accent) 45%, #2E3743); }
+.st-terminal .pk .bar, .st-terminal .cr:first-child .bar { background: color-mix(in oklab, var(--accent) 60%, #FFFFFF); }
+.st-terminal .say { white-space: normal; }
+.st-terminal .repo { margin-top: auto; font-size: calc(var(--f) * .7); }
+.st-terminal .caret { display: inline-block; width: .55em; height: 1.1em; background: #D7DEE8; vertical-align: -.2em; animation: pf-blink 1.1s steps(1) infinite; }
 @keyframes pf-blink { 50% { opacity: 0; } }
 `;
 
-// src/render/slides/tokens.ts
-var DAY2 = 864e5;
-var toMs2 = (d) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));
-var iso = (ms) => new Date(ms).toISOString().slice(0, 10);
-function render5(ctx) {
-  const { stats, lang } = ctx;
-  if (stats.tokens.yearTotal <= 0 || stats.activity.daily.length === 0) return null;
-  const s = t(lang);
-  const daily = stats.activity.daily;
-  const byDate = new Map(daily.map((d) => [d.date, d.messages]));
-  const max = Math.max(...daily.map((d) => d.messages), 1);
-  const first = toMs2(daily[0].date);
-  const start = first - (new Date(first).getUTCDay() + 6) % 7 * DAY2;
-  const end = toMs2(daily.at(-1).date);
-  const weeks = Math.floor((end - start) / DAY2 / 7) + 1;
-  const width = ctx.size.w - 128;
-  const cell = Math.max(8, Math.min(26, Math.floor((width - (weeks - 1) * 5) / weeks)));
-  const cells = [];
-  const months = [];
-  let lastLabel = -Infinity;
-  for (let w = 0; w < weeks; w++) {
-    for (let d = 0; d < 7; d++) {
-      const date = iso(start + (w * 7 + d) * DAY2);
-      const v = byDate.get(date) ?? 0;
-      const pct = v ? Math.round(18 + 82 * Math.sqrt(v / max)) : 0;
-      cells.push(`<i class="cell" style="grid-column:${w + 1};grid-row:${d + 1}${v ? `;background:color-mix(in oklab, var(--accent) ${pct}%, #EEF1F5)` : ""}"></i>`);
-      const left = w * (cell + 5);
-      const isFirst = date === daily[0].date;
-      const monthStart = date.endsWith("-01") && date > daily[0].date;
-      if ((isFirst || monthStart) && left - lastLabel >= 60) {
-        months.push(`<span style="left:${left}px">${shortMonth(date.slice(0, 7), lang)}</span>`);
-        lastLabel = left;
-      }
-    }
-  }
-  const read = compact(stats.tokens.yearTotal, lang);
-  const written = stats.tokens.yearOutput ? compact(stats.tokens.yearOutput, lang) : null;
-  const inner = `
-    <div class="copy">
-      <div class="num">${read}</div><div class="unit">${s.tokensRead}</div>
-      ${written ? `<div class="num accent">${written}</div><div class="unit">${s.tokensWritten}${stats.tokens.usageFrom ? ` ${s.since(shortDate(stats.tokens.usageFrom, lang))}` : ""}</div>` : ""}
-      ${ctx.copy.tokensLine ? `<p class="say">${fill(ctx.copy.tokensLine, stats, lang)}</p>` : ""}
-    </div>
-    <div class="heat" style="grid-template-columns:repeat(${weeks},${cell}px);grid-template-rows:repeat(7,${cell}px)">${cells.join("")}</div>
-    <div class="months">${months.join("")}</div>
-    <p class="foot">${s.activeDays(stats.activity.activeDays, num(stats.activity.activeDays, lang), shortDate(daily[0].date, lang), shortDate(daily.at(-1).date, lang))}</p>`;
-  return { css: CSS5, html: frame(ctx, "s-tok", inner) };
-}
-var CSS5 = `
-.s-tok { background: #FFFFFF; color: #10151C; font-family: Archivo, sans-serif; }
-.s-tok .copy { position: absolute; left: 64px; right: 64px; top: 140px; }
-.s-tok .num { font-weight: 900; font-size: 300px; line-height: .82; letter-spacing: -.03em; }
-.s-tok .num.accent { color: var(--accent); margin-top: 56px; }
-.s-tok .unit { font-size: 46px; font-weight: 600; margin-top: 18px; }
-.s-tok .say { font-size: 52px; line-height: 1.2; font-weight: 500; margin: 64px 0 0; max-width: 900px; }
-.s-tok .heat { position: absolute; left: 64px; bottom: 230px; display: grid; gap: 5px; }
-.s-tok .cell { border-radius: 5px; background: #EEF1F5; }
-.s-tok .months { position: absolute; left: 64px; right: 64px; bottom: 180px; height: 36px; font-size: 30px; color: #4B5563; }
-.s-tok .months span { position: absolute; top: 0; }
-.s-tok .foot { position: absolute; left: 64px; bottom: 90px; margin: 0; font-size: 34px; color: #4B5563; }
-.s-tok.size-feed .num { font-size: 220px; }
-.s-tok.size-feed .say { font-size: 44px; margin-top: 40px; }
-`;
-
 // src/render/cards.ts
-var RENDERERS = {
-  tokens: render5,
+var CARD_FORMATS = ["story", "square", "wide"];
+var STYLES = {
+  clean: render,
   receipt: render3,
   terminal: render4,
-  card: render,
-  growth: render2
+  card: render2
 };
-function storySlides(vibe) {
-  return vibe === "professional" ? ["tokens", "terminal", "receipt", "growth"] : ["tokens", "receipt", "terminal", "card"];
+var BASE_CSS = `
+.slide { position: relative; overflow: hidden; flex: none; }
+`;
+function renderCard(style, model, ctx) {
+  return STYLES[style](model, ctx);
 }
-var closer = (vibe) => vibe === "professional" ? "growth" : "card";
-function shareCards(vibe, targets) {
-  const out = [];
-  const add = (slide, size) => {
-    if (!out.some((o) => o.slide === slide && o.size === size)) out.push({ slide, size });
-  };
-  if (targets.includes("instagram")) for (const s of storySlides(vibe)) add(s, "story");
-  if (targets.includes("linkedin")) {
-    add(closer(vibe), "feed");
-    add(closer(vibe), "landscape");
-  }
-  if (targets.includes("x") || targets.includes("discord")) add(closer(vibe), "landscape");
-  add("receipt", "feed");
-  return out;
+function styleCtx(stats, copy, size, extra = {}) {
+  return { stats, lang: copy.language, theme: languageColor(stats.files.topLanguage), size: SIZES[size], index: 0, total: 1, ...extra };
 }
-function renderSlide(id, ctx) {
-  return RENDERERS[id](ctx);
-}
-function slideCtx(stats, copy, size, extra = {}) {
-  return { stats, copy, lang: copy.language, theme: languageColor(stats.files.topLanguage), size: SIZES[size], index: 0, total: 1, ...extra };
-}
-function cardDocument(id, size, stats, copy, assetsDir2) {
-  const out = renderSlide(id, slideCtx(stats, copy, size));
-  if (!out) return null;
-  const { w, h } = SIZES[size];
+function cardDocument(style, id, format2, stats, copy, assetsDir2, picked = CARD_IDS) {
+  const model = buildCard(id, stats, copy, picked);
+  if (!model) return null;
+  const out = renderCard(style, model, styleCtx(stats, copy, format2));
+  const { w, h } = SIZES[format2];
   return page({
     title: `Promptfolio ${id}`,
     lang: copy.language,
@@ -853,6 +953,7 @@ text { font-family: Archivo, sans-serif; fill: #10151C; }
 .y { font-weight: 600; font-size: 28px; fill: #4B5563; }
 .v { font-weight: 900; font-size: 64px; }
 .l { font-weight: 500; font-size: 24px; fill: #4B5563; }
+.r { font-weight: 500; font-size: 22px; fill: #6B7280; }
 .line { fill: none; stroke: ${theme.accent}; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; animation: draw 1.6s cubic-bezier(.22,1,.36,1) both; }
 @keyframes draw { from { stroke-dashoffset: 1; } }
 @media (prefers-reduced-motion: reduce) { .line { animation: none; } }
@@ -865,21 +966,22 @@ ${stat(s.tokensRead, compact(stats.tokens.yearTotal, lang), 64)}
 ${stat(s.sessions.toLowerCase(), num(stats.activity.sessions, lang), 300)}
 ${stats.files.topLanguage ? stat(s.topLanguage, stats.files.topLanguage, 500) : ""}
 ${line ? `<path d="${line}" class="line" pathLength="1"/>` : ""}
+<text x="1150" y="376" text-anchor="end" class="r">${REPO}</text>
 </svg>
 `;
 }
 
 // src/render/story.ts
 function buildStory(opts) {
-  const { stats, copy } = opts;
+  const { stats, copy, style } = opts;
   const lang = copy.language;
   const s = t(lang);
-  const ids = storySlides(copy.vibe).filter((id) => renderSlide(id, slideCtx(stats, copy, "story")) !== null);
+  const models = CARD_IDS.map((id) => buildCard(id, stats, copy)).filter((m) => m !== null);
   const css = /* @__PURE__ */ new Set([BASE_CSS, PROGRESS_CSS]);
-  const slides = ids.map((id, i) => {
-    const out = renderSlide(id, slideCtx(stats, copy, "story", { index: i, total: ids.length, progress: true }));
+  const slides = models.map((m, i) => {
+    const out = renderCard(style, m, styleCtx(stats, copy, "story", { index: i, total: models.length, progress: true }));
     css.add(out.css);
-    const png = `cards/${id}-story.png`;
+    const png = `cards/${style}-${m.id}-story.png`;
     const action = opts.pngs.has(png) ? `<a class="save" href="${png}" download>${s.save}</a>` : `<span class="hint">${s.screenshot}</span>`;
     return `<figure class="frame" data-i="${i}"${i === 0 ? "" : " hidden"}><div class="fit">${out.html}</div><figcaption>${action}</figcaption></figure>`;
   });
@@ -944,22 +1046,34 @@ var VIEWER_JS = `
 `;
 
 // src/cli/render.ts
-var TARGETS = ["instagram", "linkedin", "x", "discord"];
+var FORMATS = [...CARD_FORMATS, "readme"];
 var assetsDir = path3.join(path3.dirname(fileURLToPath(import.meta.url)), "..", "assets");
+function list(flag, value, allowed, fallback) {
+  if (value === void 0) return fallback;
+  const picked = value.split(",").map((s) => s.trim()).filter(Boolean);
+  const bad = picked.filter((x) => !allowed.includes(x));
+  if (bad.length || picked.length === 0) {
+    console.error(`Invalid --${flag}: ${value || "(empty)"} (use ${allowed.join(", ")})`);
+    return null;
+  }
+  return [...new Set(picked)];
+}
 async function main() {
   const { values } = parseArgs({
     // No `default:` options: parseArgs only supports them from Node 18.11, and the scripts promise 18.3.
-    options: { dir: { type: "string" }, targets: { type: "string" }, "no-png": { type: "boolean" } }
+    options: { dir: { type: "string" }, style: { type: "string" }, cards: { type: "string" }, formats: { type: "string" }, "no-png": { type: "boolean" } }
   });
   if (!values.dir) {
     console.error("Missing --dir <folder with stats.json and copy.json>.");
     return 1;
   }
   const dir = path3.resolve(values.dir);
-  const targets = (values.targets ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const unknown = targets.filter((x) => !TARGETS.includes(x));
-  if (unknown.length) {
-    console.error(`Unknown --targets: ${unknown.join(", ")} (use ${TARGETS.join(", ")})`);
+  const style = list("style", values.style, STYLE_IDS, ["clean"]);
+  const cards = list("cards", values.cards, CARD_IDS, CARD_IDS);
+  const formats = list("formats", values.formats, FORMATS, ["story"]);
+  if (!style || !cards || !formats) return 1;
+  if (style.length !== 1) {
+    console.error(`Invalid --style: pick one of ${STYLE_IDS.join(", ")}`);
     return 1;
   }
   let stats;
@@ -979,45 +1093,50 @@ async function main() {
   const cardsDir = path3.join(dir, "cards");
   fs3.mkdirSync(cardsDir, { recursive: true });
   const written = [];
-  const pngs = /* @__PURE__ */ new Set();
   const noPng = values["no-png"] === true;
   const browser = noPng || process.env.PROMPTFOLIO_BROWSER === "none" ? null : findBrowser({ platform: process.platform, env: process.env, exists: fs3.existsSync });
-  if (!browser && !noPng) console.log("No Chrome, Edge or Brave found: PNGs skipped, story.html still works.");
-  for (const { slide, size } of shareCards(copy.vibe, targets)) {
-    const html = cardDocument(slide, size, stats, copy, assetsDir);
-    if (!html) continue;
-    const htmlPath = path3.join(cardsDir, `${slide}-${size}.html`);
-    fs3.writeFileSync(htmlPath, html);
-    if (browser) {
-      const png = htmlPath.replace(/\.html$/, ".png");
-      try {
-        await screenshot({ browser, htmlPath, outPng: png, width: SIZES[size].w, height: SIZES[size].h });
-        pngs.add(`cards/${slide}-${size}.png`);
-        written.push(png);
-      } catch (err) {
-        console.log(`Could not render ${path3.basename(png)}: ${err instanceof Error ? err.message : err}`);
-      }
-    }
+  if (!noPng && !browser) {
+    console.log(process.env.PROMPTFOLIO_BROWSER === "none" ? "PROMPTFOLIO_BROWSER=none: PNGs skipped, story.html still works." : "No Chrome, Edge or Brave found: PNGs skipped, story.html still works.");
   }
-  const svg = readmeCard({ stats, copy, assetsDir });
-  const svgPath = path3.join(dir, "readme-card.svg");
-  fs3.writeFileSync(svgPath, svg);
-  written.push(svgPath);
-  if (browser) {
-    const wrap = path3.join(cardsDir, "readme-card.html");
-    fs3.writeFileSync(wrap, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:1200px;height:400px;overflow:hidden}</style></head><body>${svg}</body></html>`);
-    const png = path3.join(dir, "readme-card.png");
+  const shoot = async (htmlPath, png, width, height) => {
+    if (!browser) return;
     try {
-      await screenshot({ browser, htmlPath: wrap, outPng: png, width: 1200, height: 400 });
+      await screenshot({ browser, htmlPath, outPng: png, width, height });
       written.push(png);
     } catch (err) {
-      console.log(`Could not render readme-card.png: ${err instanceof Error ? err.message : err}`);
+      console.log(`Could not render ${path3.basename(png)}: ${err instanceof Error ? err.message : err}`);
+    }
+  };
+  for (const card of cards) {
+    for (const format2 of formats) {
+      if (format2 === "readme") continue;
+      const html = cardDocument(style[0], card, format2, stats, copy, assetsDir, cards);
+      if (!html) {
+        if (format2 === formats.find((f) => f !== "readme")) console.log(`skipped ${card}: not enough data`);
+        continue;
+      }
+      const htmlPath = path3.join(cardsDir, `${style[0]}-${card}-${format2}.html`);
+      fs3.writeFileSync(htmlPath, html);
+      await shoot(htmlPath, htmlPath.replace(/\.html$/, ".png"), SIZES[format2].w, SIZES[format2].h);
     }
   }
+  if (formats.includes("readme")) {
+    const svg = readmeCard({ stats, copy, assetsDir });
+    const svgPath = path3.join(dir, "readme-card.svg");
+    fs3.writeFileSync(svgPath, svg);
+    written.push(svgPath);
+    if (browser) {
+      const wrap = path3.join(cardsDir, "readme-card.html");
+      fs3.writeFileSync(wrap, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:1200px;height:400px;overflow:hidden}</style></head><body>${svg}</body></html>`);
+      await shoot(wrap, path3.join(dir, "readme-card.png"), 1200, 400);
+    }
+  }
+  const captionsPath = path3.join(dir, "captions.json");
+  fs3.writeFileSync(captionsPath, JSON.stringify(buildCaptions(copy, stats), null, 2));
+  const pngs = new Set(fs3.readdirSync(cardsDir).filter((f) => f.startsWith(`${style[0]}-`) && f.endsWith("-story.png")).map((f) => `cards/${f}`));
   const storyPath = path3.join(dir, "story.html");
-  fs3.writeFileSync(storyPath, buildStory({ stats, copy, assetsDir, pngs }));
-  written.unshift(storyPath);
-  for (const f of written) console.log(f);
+  fs3.writeFileSync(storyPath, buildStory({ stats, copy, style: style[0], assetsDir, pngs }));
+  for (const f of [storyPath, ...written, captionsPath]) console.log(f);
   return 0;
 }
 main().then((code) => {

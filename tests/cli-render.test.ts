@@ -22,41 +22,76 @@ function prepared(copy: unknown = funCopy): string {
 
 beforeAll(() => { execFileSync(process.execPath, [path.join(root, 'esbuild.config.mjs')], { cwd: root }); });
 
+const noBrowser = { ...process.env, PROMPTFOLIO_BROWSER: 'none' };
+const cardHtml = (dir: string) => fs.readdirSync(path.join(dir, 'cards')).filter(f => f.endsWith('.html')).sort();
+
+test('defaults render clean story cards', () => {
+  const dir = prepared();
+  const r = node('render', ['--dir', dir], noBrowser);
+  expect(r.status, r.stderr).toBe(0);
+  expect(cardHtml(dir)).toEqual(['clean-growth-story.html', 'clean-tokens-story.html', 'clean-toolkit-story.html', 'clean-year-story.html']);
+  expect(r.stdout).toContain(path.join(dir, 'story.html'));
+});
+
+test('picked cards and formats only', () => {
+  const dir = prepared();
+  const r = node('render', ['--dir', dir, '--style', 'receipt', '--cards', 'tokens', '--formats', 'square,wide'], noBrowser);
+  expect(r.status, r.stderr).toBe(0);
+  expect(cardHtml(dir)).toEqual(['receipt-tokens-square.html', 'receipt-tokens-wide.html']);
+  expect(fs.existsSync(path.join(dir, 'readme-card.svg'))).toBe(false);
+});
+
+test('readme only when picked', () => {
+  const dir = prepared();
+  expect(node('render', ['--dir', dir, '--formats', 'readme'], noBrowser).status).toBe(0);
+  expect(fs.existsSync(path.join(dir, 'readme-card.svg'))).toBe(true);
+  expect(cardHtml(dir)).toEqual([]);
+});
+
+test('unknown style exits 1', () => {
+  const r = node('render', ['--dir', prepared(), '--style', 'neon'], noBrowser);
+  expect(r.status).toBe(1);
+  expect(r.stderr).toMatch(/--style.*clean, receipt, terminal, card/);
+});
+
 test('render without browser', () => {
   const dir = prepared();
-  const r = node('render', ['--dir', dir, '--targets', 'instagram'], { ...process.env, PROMPTFOLIO_BROWSER: 'none' });
+  const r = node('render', ['--dir', dir], noBrowser);
   expect(r.status, r.stderr).toBe(0);
   expect(fs.existsSync(path.join(dir, 'story.html'))).toBe(true);
-  expect(fs.existsSync(path.join(dir, 'readme-card.svg'))).toBe(true);
+  expect(fs.existsSync(path.join(dir, 'captions.json'))).toBe(true);
   expect(fs.readdirSync(path.join(dir, 'cards')).filter(f => f.endsWith('.png'))).toEqual([]);
-  expect(r.stdout).toMatch(/No Chrome, Edge or Brave found/);
+  expect(r.stdout).toMatch(/PNGs skipped/);
+});
+
+test("story links only the current style's PNGs", () => {
+  const dir = prepared();
+  fs.mkdirSync(path.join(dir, 'cards'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'cards', 'receipt-tokens-story.png'), '');
+  fs.writeFileSync(path.join(dir, 'cards', 'clean-year-story.png'), '');
+  expect(node('render', ['--dir', dir, '--style', 'clean'], noBrowser).status).toBe(0);
+  const story = fs.readFileSync(path.join(dir, 'story.html'), 'utf8');
+  expect(story).toContain('href="cards/clean-year-story.png"');
+  expect(story).not.toContain('receipt-tokens-story.png');
 });
 
 test('render rejects invalid copy', () => {
   const dir = prepared({ schemaVersion: 1, vibe: 'fun', language: 'en', captions: {} });
-  const r = node('render', ['--dir', dir], { ...process.env, PROMPTFOLIO_BROWSER: 'none' });
+  const r = node('render', ['--dir', dir], noBrowser);
   expect(r.status).toBe(1);
-  expect(r.stdout + r.stderr).toMatch(/persona/);
-});
-
-test('render --no-png skips screenshots', () => {
-  const dir = prepared();
-  const r = node('render', ['--dir', dir, '--no-png']);
-  expect(r.status, r.stderr).toBe(0);
-  expect(fs.readdirSync(path.join(dir, 'cards')).some(f => f.endsWith('.png'))).toBe(false);
+  expect(r.stdout + r.stderr).toMatch(/schemaVersion/);
 });
 
 const browser = findBrowser({ platform: process.platform, env: process.env, exists: fs.existsSync });
 
 test.skipIf(!browser)('render with browser writes PNGs at the right sizes', () => {
   const dir = prepared();
-  const r = node('render', ['--dir', dir, '--targets', 'instagram,x']);
+  const r = node('render', ['--dir', dir, '--style', 'card', '--cards', 'tokens,year', '--formats', 'story,square,wide,readme']);
   expect(r.status, r.stderr).toBe(0);
-  const sizes = Object.fromEntries(fs.readdirSync(path.join(dir, 'cards')).filter(f => f.endsWith('.png'))
-    .map(f => [f, pngSize(fs.readFileSync(path.join(dir, 'cards', f)))]));
-  expect(sizes['card-story.png']).toEqual({ width: 1080, height: 1920 });
-  expect(sizes['card-landscape.png']).toEqual({ width: 1200, height: 675 });
-  expect(sizes['receipt-feed.png']).toEqual({ width: 1080, height: 1350 });
-  expect(pngSize(fs.readFileSync(path.join(dir, 'readme-card.png')))).toEqual({ width: 1200, height: 400 });
-  expect(fs.readFileSync(path.join(dir, 'story.html'), 'utf8')).toContain('href="cards/card-story.png"');
-}, 180_000);
+  const size = (f: string) => pngSize(fs.readFileSync(path.join(dir, f)));
+  expect(size('cards/card-tokens-story.png')).toEqual({ width: 1080, height: 1920 });
+  expect(size('cards/card-year-square.png')).toEqual({ width: 1080, height: 1080 });
+  expect(size('cards/card-year-wide.png')).toEqual({ width: 1200, height: 675 });
+  expect(size('readme-card.png')).toEqual({ width: 1200, height: 400 });
+  expect(fs.readFileSync(path.join(dir, 'story.html'), 'utf8')).toContain('href="cards/card-tokens-story.png"');
+}, 240_000);
