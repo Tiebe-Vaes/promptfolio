@@ -5,13 +5,13 @@ import { footer, frame, type StyleCtx, type StyleOut } from './style.js';
 const toolLimit = (size: string) => (size === 'wide' ? 5 : 10);
 
 /** Shared body for the Clean and Trading card styles: bars, tool bars, label/value rows and the total. */
-export function sideHtml(m: CardModel, size: string): string {
+export function sideHtml(m: CardModel, size: string, maxTools = toolLimit(size)): string {
   const peak = Math.max(...m.bars.map(b => b.value), 1);
   const bars = m.bars.length
     ? `<div class="bars">${m.bars.map(b => `<div class="b${b.peak ? ' pk' : ''}"><i style="height:${Math.max(2, Math.round(100 * b.value / peak))}%"></i><span>${b.label}</span></div>`).join('')}</div>`
     : '';
   const tools = m.tools.length
-    ? `<ol class="tools">${m.tools.slice(0, toolLimit(size)).map(x => `<li><span class="n">${x.name}</span><span class="c">${x.count}</span><i style="width:${Math.max(2, Math.round(100 * x.share))}%"></i></li>`).join('')}</ol>`
+    ? `<ol class="tools">${m.tools.slice(0, maxTools).map(x => `<li><span class="n">${x.name}</span><span class="c">${x.count}</span><i style="width:${Math.max(2, Math.round(100 * x.share))}%"></i></li>`).join('')}</ol>`
     : '';
   const items = m.items.length
     ? `<dl class="items">${m.items.map(i => `<div><dt>${i.label}</dt><dd>${i.value}${i.note ? ` <small>${i.note}</small>` : ''}</dd></div>`).join('')}</dl>`
